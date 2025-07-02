@@ -176,31 +176,19 @@ if menu == "Carga de Datos":
         df_ing = cargar_archivo(ing)
         st.session_state['ingredientes'] = df_ing
         st.success("Ingredientes cargados.")
-        # DEPURACIÓN: muestra shape y columnas
-        if df_ing is not None:
-            st.write("Shape:", df_ing.shape)
-            st.write("Columns:", list(df_ing.columns))
-            st.dataframe(df_ing)
-        else:
-            st.error("No se pudo leer el archivo o está vacío.")
+        st.dataframe(df_ing)
     lin = st.file_uploader("Líneas genéticas (csv/xlsx)", type=["csv", "xlsx"])
     if lin:
         df_lin = cargar_archivo(lin)
         st.session_state['lineas'] = df_lin
         st.success("Líneas genéticas cargadas.")
-        if df_lin is not None:
-            st.dataframe(df_lin)
-        else:
-            st.error("No se pudo leer el archivo o está vacío.")
+        st.dataframe(df_lin)
     pre = st.file_uploader("Precios de venta (csv/xlsx)", type=["csv", "xlsx"])
     if pre:
         df_pre = cargar_archivo(pre)
         st.session_state['precios'] = df_pre
         st.success("Precios cargados.")
-        if df_pre is not None:
-            st.dataframe(df_pre)
-        else:
-            st.error("No se pudo leer el archivo o está vacío.")
+        st.dataframe(df_pre)
 
 elif menu == "Formulación de Dieta":
     st.header("Panel de Formulación de Dieta")
