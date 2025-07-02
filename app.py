@@ -5,11 +5,11 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ------------------ ESTILO CORPORATIVO: Fondo y textos legibles ------------------
+# ----------- ESTILO CORPORATIVO: Fondo, sidebar y centro legibles -----------
 st.markdown(
     """
     <style>
-    /* Fondo general corporativo */
+    /* Fondo general */
     body, .stApp {
         background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
     }
@@ -22,47 +22,26 @@ st.markdown(
         box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04);
         min-height: 80vh;
     }
-    .stApp > header {
-        background: transparent;
-    }
     /* Sidebar */
     .stSidebar, .stSidebarContent, .stSidebar .css-1v0mbdj, .stSidebar .css-1d391kg, .stSidebar .css-1r6slb0 {
         background: #19345c !important;
         color: #fff !important;
     }
-    .stSidebar * {
-        color: #fff !important;
-    }
-    .stSidebar [data-testid="stSidebarNav"] label, .stSidebar [data-testid="stSidebarNav"] div, .stSidebar .stRadio label {
-        color: #fff !important;
-        font-weight: 500;
-    }
-    .stSidebar [data-testid="stSidebarNav"] svg {
-        color: #fff !important;
-    }
-    .stSidebar .stImage > img {
-        border-radius: 15px;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 12px rgba(32,64,128,.14);
-        margin-bottom: 14px;
-    }
-    .stSidebar hr {
-        border-top:1px solid #2e4771 !important;
-        margin: 10px 0 !important;
-    }
-    /* --------- CENTRO DEL APP: textos, headers, labels, inputs --------- */
-    .main-card, .main-card * {
+    .stSidebar * { color: #fff !important; }
+    /* Centro: TODOS los textos y labels */
+    .block-container, .block-container * {
         color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
+    /* Títulos y textos principales */
     h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stDataFrame, .stTable, .stCaption {
         color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
-    /* Inputs, selects, radios */
-    .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
+    /* Labels de widgets */
+    label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
         color: #19345c !important;
-        font-weight: 600;
+        font-weight: 600 !important;
     }
     /* Dataframes y tablas */
     .stDataFrame, .dataframe, .stTable {
@@ -70,6 +49,12 @@ st.markdown(
         color: #19345c !important;
         border-radius: 10px;
         overflow: hidden;
+    }
+    /* Inputs y selects */
+    .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
+        background: #f4f8fa;
+        border-radius: 6px;
+        color: #19345c !important;
     }
     /* Botones */
     .stButton>button {
@@ -79,12 +64,7 @@ st.markdown(
         border: none !important;
         font-weight: 600;
     }
-    .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
-        background: #f4f8fa;
-        border-radius: 6px;
-        color: #19345c !important;
-    }
-    /* Ajuste para mensajes de éxito/warning */
+    /* Mensajes */
     .stAlert, .st-success, .st-bw, .st-cb {
         color: #204080 !important;
         font-weight: bold;
