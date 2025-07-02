@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ----------- ESTILO CORPORATIVO: Fondo, sidebar y centro legibles -----------
+# ----------- ESTILO CORPORATIVO: Sidebar y centro legibles -----------
 st.markdown(
     """
     <style>
@@ -13,48 +13,45 @@ st.markdown(
     body, .stApp {
         background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
     }
-    .main-card {
-        background: #fff;
-        border-radius: 16px;
-        padding: 2.5rem 2rem 2rem 2rem;
-        margin-top: 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04);
-        min-height: 80vh;
-    }
     /* Sidebar */
-    .stSidebar, .stSidebarContent, .stSidebar .css-1v0mbdj, .stSidebar .css-1d391kg, .stSidebar .css-1r6slb0 {
+    .stSidebar, .stSidebarContent, .stSidebar * {
         background: #19345c !important;
         color: #fff !important;
     }
-    .stSidebar * { color: #fff !important; }
-    /* Centro: TODOS los textos y labels */
-    .block-container, .block-container * {
+    /* Centro: Forzar textos oscuros en todo el main */
+    section.main, section.main * {
         color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
+    }
+    /* Área principal blanca y con sombra */
+    section.main > div:first-child {
+        background: #fff !important;
+        border-radius: 18px !important;
+        box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04) !important;
+        padding: 2.5rem 2rem 2rem 2rem !important;
+        margin-top: 2rem !important;
+        margin-bottom: 2rem !important;
+        min-height: 70vh !important;
     }
     /* Títulos y textos principales */
-    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stDataFrame, .stTable, .stCaption {
+    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stCaption {
         color: #19345c !important;
-        font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
-    /* Labels de widgets */
+    /* Labels y entradas de widgets */
     label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
         color: #19345c !important;
         font-weight: 600 !important;
     }
-    /* Dataframes y tablas */
-    .stDataFrame, .dataframe, .stTable {
-        background: #f9fbfd;
-        color: #19345c !important;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    /* Inputs y selects */
     .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
-        background: #f4f8fa;
-        border-radius: 6px;
+        background: #f4f8fa !important;
+        border-radius: 6px !important;
         color: #19345c !important;
+    }
+    /* Tablas */
+    .stDataFrame, .dataframe, .stTable, .stDataFrame * {
+        background: #f9fbfd !important;
+        color: #19345c !important;
+        border-radius: 10px !important;
     }
     /* Botones */
     .stButton>button {
@@ -62,12 +59,7 @@ st.markdown(
         color: #fff !important;
         border-radius: 6px !important;
         border: none !important;
-        font-weight: 600;
-    }
-    /* Mensajes */
-    .stAlert, .st-success, .st-bw, .st-cb {
-        color: #204080 !important;
-        font-weight: bold;
+        font-weight: 600 !important;
     }
     </style>
     """,
@@ -96,7 +88,6 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-st.markdown("<div class='main-card'>", unsafe_allow_html=True)
 st.title("Módulo de Inteligencia Productiva Avícola")
 
 menu = st.sidebar.radio(
@@ -216,8 +207,6 @@ elif menu == "Comparador de Escenarios":
     ])
     fig.update_layout(barmode='group', title="Comparativo de margen por ave")
     st.plotly_chart(fig)
-
-st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
