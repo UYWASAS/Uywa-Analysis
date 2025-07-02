@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ----------- ESTILO CORPORATIVO: Sidebar, radios y centro legibles -----------
+# ----------- ESTILO CORPORATIVO (igual que antes) -----------
 st.markdown(
     """
     <style>
@@ -81,7 +81,6 @@ st.markdown(
         border: none !important;
         font-weight: 600 !important;
     }
-    /* Botón de file uploader: texto y borde azul corporativo */
     button[title="Browse files"] {
         color: #204080 !important;
         font-weight: 700 !important;
@@ -95,13 +94,11 @@ st.markdown(
         color: #fff !important;
         border: 2px solid #204080 !important;
     }
-    /* Drag and drop zone con borde azul corporativo */
     div[data-testid="stFileUploaderDropzone"] {
         border: 1.5px solid #204080 !important;
         border-radius: 12px !important;
         background: #f8fafc !important;
     }
-    /* Forzar color de texto en celdas de tablas/dataframes de Streamlit */
     div[data-testid="stDataFrame"] * {
         color: #19345c !important;
         background: transparent !important;
@@ -117,7 +114,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- SIDEBAR --------------------
 with st.sidebar:
     st.image("nombre_archivo_logo.png", width=90)
     st.markdown(
@@ -159,7 +155,6 @@ def cargar_archivo(file):
     if file.name.endswith('.csv'):
         return pd.read_csv(file)
     else:
-        # Siempre toma la primera hoja con encabezado
         return pd.read_excel(file, sheet_name=0)
 
 if 'ingredientes' not in st.session_state:
@@ -196,7 +191,14 @@ elif menu == "Formulación de Dieta":
     if df_ing is None:
         st.warning("Primero debes cargar los ingredientes.")
     else:
-        seleccionados = st.multiselect("Selecciona ingredientes", df_ing['nombre'].tolist())
+        # Nombres de columnas esperados
+        nombre_col = "Ingrediente"
+        precio_col = "precio"  # cambia si tu archivo tiene otro nombre para el precio
+
+        # Determinar qué columnas son nutrientes (todas excepto nombre y precio)
+        nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
+
+        seleccionados = st.multiselect("Selecciona ingredientes", df_ing[nombre_col].tolist())
         proporciones = []
         for ingr in seleccionados:
             prop = st.number_input(f"% de {ingr}", min_value=0.0, max_value=100.0, value=10.0)
@@ -204,17 +206,22 @@ elif menu == "Formulación de Dieta":
         if seleccionados and sum(proporciones) > 0:
             df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
             df_formula["proporcion"] = df_formula["proporcion"] / 100
+
             st.dataframe(df_formula)
-            nutrientes = ["proteina", "energia", "lisina", "metionina", "Ca", "P"]
+
+            # Calcular aportes de todos los nutrientes
             resultado = {}
             for nutr in nutrientes:
-                resultado[nutr] = (df_formula["proporcion"] *
-                    df_ing.set_index("nombre")[nutr].reindex(df_formula["ingrediente"]).values).sum()
+                valores_nutr = df_ing.set_index(nombre_col)[nutr].reindex(df_formula["ingrediente"]).values
+                resultado[nutr] = (df_formula["proporcion"] * valores_nutr).sum()
             st.subheader("Aportes de nutrientes (por tonelada)")
             st.json(resultado)
-            precios = df_ing.set_index("nombre")["precio"].reindex(df_formula["ingrediente"]).values
-            costo_total = (df_formula["proporcion"] * precios).sum()
-            st.success(f"Costo estimado por tonelada: U$D {costo_total:,.2f}")
+
+            # Costo total
+            if precio_col in df_ing.columns:
+                precios = df_ing.set_index(nombre_col)[precio_col].reindex(df_formula["ingrediente"]).values
+                costo_total = (df_formula["proporcion"] * precios).sum()
+                st.success(f"Costo estimado por tonelada: U$D {costo_total:,.2f}")
 
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo")
