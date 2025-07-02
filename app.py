@@ -228,12 +228,16 @@ elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
     df_lineas = st.session_state['lineas']
     if df_lineas is not None and 'linea' in df_lineas.columns:
-        lineas_disponibles = df_lineas['linea'].unique()
+        # Mostramos todas las genéticas cargadas
+        st.subheader("Curva genética de referencia:")
+        st.dataframe(df_lineas)
+        # Selector de línea genética
+        lineas_disponibles = list(df_lineas['linea'].unique())
         linea_sel = st.selectbox("Selecciona línea genética", lineas_disponibles)
-        df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy()
+        df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
         st.success(f"Línea seleccionada: {linea_sel}")
         st.dataframe(df_gen)
-        
+
         # Parámetro a graficar
         opciones_grafico = {
             "Peso (kg)": "peso",
