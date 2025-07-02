@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ----------- ESTILO CORPORATIVO: Sidebar y centro legibles -----------
+# ----------- ESTILO CORPORATIVO: Sidebar, radios y centro legibles -----------
 st.markdown(
     """
     <style>
@@ -17,6 +17,24 @@ st.markdown(
     .stSidebar, .stSidebarContent, .stSidebar * {
         background: #19345c !important;
         color: #fff !important;
+    }
+    /* Radios y checkboxes de la sidebar */
+    .stSidebar input[type="radio"], .stSidebar input[type="checkbox"] {
+        accent-color: #fff !important;
+        background-color: #fff !important;
+        border: 2px solid #fff !important;
+    }
+    .stSidebar .stRadio [data-baseweb="radio"] > div:first-child {
+        border: 2px solid #fff !important;
+        background: #19345c !important;
+    }
+    .stSidebar .stRadio [data-baseweb="radio"] svg {
+        color: #fff !important;
+        fill: #fff !important;
+    }
+    .stSidebar .stRadio [aria-checked="true"] svg {
+        color: #ff5656 !important;
+        fill: #ff5656 !important;
     }
     /* Centro: Forzar textos oscuros en todo el main */
     section.main, section.main * {
