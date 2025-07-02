@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ------------------ ESTILO CORPORATIVO AVANZADO ------------------
+# ------------------ ESTILO CORPORATIVO CON TEXTO LEGIBLE ------------------
 st.markdown(
     """
     <style>
@@ -26,19 +26,22 @@ st.markdown(
     }
     .stSidebar {
         background: #19345c !important;
+        color: #fff !important;
     }
-    .css-1v0mbdj, .css-1d391kg {
+    .stSidebar, .stSidebarContent, .stSidebar .css-1v0mbdj, .stSidebar .css-1d391kg, .stSidebar .css-1r6slb0 {
         background: #19345c !important;
+        color: #fff !important;
     }
-    .css-1r6slb0 {
-        background: #19345c !important;
+    .stSidebar * {
+        color: #fff !important;
     }
-    .stSidebar [data-testid="stSidebarNav"] {
-        background: #19345c;
-        color: #fff;
+    /* Radio buttons y labels */
+    .stSidebar [data-testid="stSidebarNav"] label, .stSidebar [data-testid="stSidebarNav"] div, .stSidebar .stRadio label {
+        color: #fff !important;
+        font-weight: 500;
     }
     .stSidebar [data-testid="stSidebarNav"] svg {
-        color: #fff;
+        color: #fff !important;
     }
     .stSidebar .stImage > img {
         border-radius: 15px;
@@ -81,14 +84,14 @@ with st.sidebar:
     st.markdown(
         """
         <div style='text-align: center;'>
-            <div style='font-size:24px;font-family:Montserrat,Arial;color:#e6f0fa; margin-top: 10px;letter-spacing:1px;'>
+            <div style='font-size:24px;font-family:Montserrat,Arial;color:#fff; margin-top: 10px;letter-spacing:1px;'>
                 <b>UYWA-NUTRITION<sup>®</sup></b>
             </div>
-            <div style='font-size:13px;color:#c1d0df; margin-top: 5px; font-family:Montserrat,Arial;'>
+            <div style='font-size:13px;color:#fff; margin-top: 5px; font-family:Montserrat,Arial;'>
                 Nutrición de Precisión Basada en Evidencia
             </div>
             <hr style='border-top:1px solid #2e4771; margin: 10px 0;'>
-            <div style='font-size:12px;color:#b2c4d6; margin-top: 8px;'>
+            <div style='font-size:12px;color:#fff; margin-top: 8px;'>
                 <b>Contacto:</b> uywasas@gmail.com<br>
                 Derechos reservados © 2025
             </div>
@@ -222,6 +225,6 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
-    "<div style='font-size:11px;color:#b2c4d6;text-align:center'>Desarrollado como MVP para <b>UYWA-NUTRITION®</b></div>",
+    "<div style='font-size:11px;color:#fff;text-align:center'>Desarrollado como MVP para <b>UYWA-NUTRITION®</b></div>",
     unsafe_allow_html=True
 )
