@@ -9,16 +9,13 @@ st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 st.markdown(
     """
     <style>
-    /* Fondo general */
     body, .stApp {
         background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
     }
-    /* Sidebar */
     .stSidebar, .stSidebarContent, .stSidebar * {
         background: #19345c !important;
         color: #fff !important;
     }
-    /* Radios y checkboxes de la sidebar */
     .stSidebar input[type="radio"], .stSidebar input[type="checkbox"] {
         accent-color: #fff !important;
         background-color: #fff !important;
@@ -36,12 +33,10 @@ st.markdown(
         color: #ff5656 !important;
         fill: #ff5656 !important;
     }
-    /* Centro: Forzar textos oscuros en todo el main */
     section.main, section.main * {
         color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
-    /* Área principal blanca y con sombra */
     section.main > div:first-child {
         background: #fff !important;
         border-radius: 18px !important;
@@ -51,11 +46,9 @@ st.markdown(
         margin-bottom: 2rem !important;
         min-height: 70vh !important;
     }
-    /* Títulos y textos principales */
     h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stCaption {
         color: #19345c !important;
     }
-    /* Labels y entradas de widgets */
     label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
         color: #19345c !important;
         font-weight: 600 !important;
@@ -65,13 +58,22 @@ st.markdown(
         border-radius: 6px !important;
         color: #19345c !important;
     }
-    /* Tablas */
+    /* Tablas y dataframes: texto SIEMPRE visible */
+    .stDataFrame, .stDataFrame * {
+        color: #19345c !important;
+    }
+    .stTable, .stTable td, .stTable th {
+        color: #19345c !important;
+    }
+    div[data-testid="stDataFrame"] table, 
+    div[data-testid="stDataFrame"] td, 
+    div[data-testid="stDataFrame"] th {
+        color: #19345c !important;
+    }
     .stDataFrame, .dataframe, .stTable, .stDataFrame * {
         background: #f9fbfd !important;
-        color: #19345c !important;
         border-radius: 10px !important;
     }
-    /* Botones */
     .stButton>button {
         background-color: #204080 !important;
         color: #fff !important;
@@ -84,7 +86,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- LOGO Y MARCA EN LA SIDEBAR --------------------
+# -------------------- SIDEBAR --------------------
 with st.sidebar:
     st.image("nombre_archivo_logo.png", width=90)
     st.markdown(
