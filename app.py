@@ -191,14 +191,11 @@ elif menu == "Formulación de Dieta":
     if df_ing is None:
         st.warning("Primero debes cargar los ingredientes.")
     else:
-        # Nombres de columnas esperados
         nombre_col = "Ingrediente"
         precio_col = "precio"  # cambia si tu archivo tiene otro nombre para el precio
 
-        # Determinar qué columnas son nutrientes (todas excepto nombre y precio)
         nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
 
-        # Forzar todos los nutrientes a tipo numérico
         for nutr in nutrientes:
             df_ing[nutr] = pd.to_numeric(df_ing[nutr], errors='coerce')
 
@@ -210,16 +207,16 @@ elif menu == "Formulación de Dieta":
         if seleccionados and sum(proporciones) > 0:
             df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
             df_formula["proporcion"] = df_formula["proporcion"] / 100
-
             st.dataframe(df_formula)
 
-            # Calcular aportes de todos los nutrientes
+            # Calcular aportes de todos los nutrientes y mostrar en tabla
             resultado = {}
             for nutr in nutrientes:
                 valores_nutr = df_ing.set_index(nombre_col)[nutr].reindex(df_formula["ingrediente"]).values
                 resultado[nutr] = (df_formula["proporcion"] * valores_nutr).sum()
+            df_resultado = pd.DataFrame(resultado, index=["Aporte total"])
             st.subheader("Aportes de nutrientes (por tonelada)")
-            st.json(resultado)
+            st.dataframe(df_resultado.T, use_container_width=True)  # Nutrientes como filas
 
             # Costo total
             if precio_col in df_ing.columns:
