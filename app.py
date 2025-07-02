@@ -16,23 +16,6 @@ st.markdown(
         background: #19345c !important;
         color: #fff !important;
     }
-    .stSidebar input[type="radio"], .stSidebar input[type="checkbox"] {
-        accent-color: #fff !important;
-        background-color: #fff !important;
-        border: 2px solid #fff !important;
-    }
-    .stSidebar .stRadio [data-baseweb="radio"] > div:first-child {
-        border: 2px solid #fff !important;
-        background: #19345c !important;
-    }
-    .stSidebar .stRadio [data-baseweb="radio"] svg {
-        color: #fff !important;
-        fill: #fff !important;
-    }
-    .stSidebar .stRadio [aria-checked="true"] svg {
-        color: #ff5656 !important;
-        fill: #ff5656 !important;
-    }
     section.main, section.main * {
         color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
@@ -58,55 +41,11 @@ st.markdown(
         border-radius: 6px !important;
         color: #19345c !important;
     }
-    /* Tablas y dataframes: texto SIEMPRE visible */
-    .stDataFrame, .stDataFrame * {
-        color: #19345c !important;
-    }
-    .stTable, .stTable td, .stTable th {
-        color: #19345c !important;
-    }
-    div[data-testid="stDataFrame"] table, 
-    div[data-testid="stDataFrame"] td, 
-    div[data-testid="stDataFrame"] th {
-        color: #19345c !important;
-    }
-    .stDataFrame, .dataframe, .stTable, .stDataFrame * {
-        background: #f9fbfd !important;
-        border-radius: 10px !important;
-    }
     .stButton>button {
         background-color: #204080 !important;
         color: #fff !important;
         border-radius: 6px !important;
         border: none !important;
-        font-weight: 600 !important;
-    }
-    button[title="Browse files"] {
-        color: #204080 !important;
-        font-weight: 700 !important;
-        background: #fff !important;
-        border: 2px solid #204080 !important;
-        border-radius: 8px !important;
-        box-shadow: none !important;
-    }
-    button[title="Browse files"]:hover {
-        background: #204080 !important;
-        color: #fff !important;
-        border: 2px solid #204080 !important;
-    }
-    div[data-testid="stFileUploaderDropzone"] {
-        border: 1.5px solid #204080 !important;
-        border-radius: 12px !important;
-        background: #f8fafc !important;
-    }
-    div[data-testid="stDataFrame"] * {
-        color: #19345c !important;
-        background: transparent !important;
-    }
-    div[data-testid="stDataFrame"] td, 
-    div[data-testid="stDataFrame"] th {
-        color: #19345c !important;
-        background: transparent !important;
         font-weight: 600 !important;
     }
     </style>
@@ -160,7 +99,6 @@ if 'ingredientes' not in st.session_state:
     st.session_state['ingredientes'] = None
 
 # ------- BLOQUE DE DATOS GENÉTICOS INCRUSTADO Y EDITABLE --------
-# Datos base (puedes expandir según tu necesidad)
 datos_geneticos_base = pd.DataFrame({
     "linea": ["Cobb", "Cobb", "Cobb", "Cobb", "Ross", "Ross", "Ross", "Ross"],
     "edad": [28, 35, 42, 49, 28, 35, 42, 49],
@@ -171,9 +109,11 @@ datos_geneticos_base = pd.DataFrame({
 
 if "genetica_edit" not in st.session_state:
     st.session_state["genetica_edit"] = datos_geneticos_base.copy()
-
 elif not isinstance(st.session_state["genetica_edit"], pd.DataFrame):
     st.session_state["genetica_edit"] = datos_geneticos_base.copy()
+
+if 'escenarios_guardados' not in st.session_state:
+    st.session_state['escenarios_guardados'] = []
 
 if menu == "Formulación de Dieta":
     st.header("Panel de Formulación de Dieta")
@@ -216,7 +156,7 @@ if menu == "Formulación de Dieta":
 
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
-    # --- Tabla genética editable y embebida ---
+
     with st.expander("Mostrar y editar genética cargada"):
         df_edit = st.data_editor(
             st.session_state["genetica_edit"], 
@@ -228,73 +168,206 @@ elif menu == "Simulador Productivo":
             st.session_state["genetica_edit"] = df_edit
             st.success("¡Cambios guardados!")
     df_lineas = st.session_state["genetica_edit"].copy()
-    # Selector de línea genética
-    lineas_disponibles = list(df_lineas['linea'].unique())
-    linea_sel = st.selectbox("Selecciona línea genética", lineas_disponibles)
-    df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
-    st.success(f"Línea seleccionada: {linea_sel}")
-    # Parámetro a graficar
-    opciones_grafico = {
-        "Peso (kg)": "peso",
-        "Consumo acumulado (kg)": "consumo",
-        "FCR": "fcr"
-    }
-    grafico_sel = st.selectbox("¿Qué quieres graficar?", list(opciones_grafico.keys()))
-    col_grafico = opciones_grafico[grafico_sel]
-    aves_ini = st.number_input("Aves iniciales", min_value=1000, max_value=100000, value=10000)
-    mortalidad = st.number_input("Mortalidad (%)", min_value=0.0, max_value=20.0, value=5.0)
-    edad_salida = st.number_input("Edad de salida (días)", min_value=1, max_value=int(df_gen['edad'].max()), value=42)
-    peso_final = st.number_input("Peso final esperado (kg)", min_value=0.5, max_value=5.0, value=2.5)
-    consumo_total = st.number_input("Consumo acumulado (kg/ave)", min_value=1.0, max_value=10.0, value=4.5)
+
+    # Parámetros de simulación base e interacción
+    st.subheader("Parámetros de simulación e interacción")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        lineas_disponibles = list(df_lineas['linea'].unique())
+        linea_sel = st.selectbox("Selecciona línea genética", lineas_disponibles)
+        edad_inicial = st.number_input("Edad inicial (días)", min_value=0, max_value=40, value=0)
+        aves_ini = st.number_input("Aves iniciales", min_value=1000, max_value=100000, value=10000)
+    with col2:
+        mortalidad = st.slider("Mortalidad (%)", 0.0, 20.0, 5.0, 0.1)
+        edad_salida = st.selectbox("Edad de salida (días)", sorted(df_lineas[df_lineas['linea']==linea_sel]['edad'].unique()), index=2)
+        precio_alimento_kg = st.slider("Precio alimento (USD/kg)", 0.20, 1.50, 0.50, 0.01)
+    with col3:
+        precio_venta_kg = st.slider("Precio venta pollo vivo (USD/kg)", 0.5, 4.0, 2.0, 0.01)
+        # Peso y consumo sugerido por genética
+        df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
+        peso_sug = float(df_gen[df_gen['edad'] == edad_salida]['peso'].values[0])
+        consumo_sug = float(df_gen[df_gen['edad'] == edad_salida]['consumo'].values[0])
+        peso_final = st.number_input("Peso final esperado (kg)", min_value=0.5, max_value=5.0, value=peso_sug)
+        consumo_total = st.number_input("Consumo acumulado (kg/ave)", min_value=1.0, max_value=10.0, value=consumo_sug)
+
     aves_finales = aves_ini * (1 - mortalidad/100)
+    try:
+        peso_inicial = float(df_gen[df_gen['edad'] == edad_inicial]['peso'].values[0])
+    except:
+        peso_inicial = 0.04  # pollito de 1 día
+
     fcr_real = consumo_total / peso_final if peso_final > 0 else np.nan
-    fila_ref = df_gen[df_gen['edad'] == edad_salida]
-    if not fila_ref.empty:
-        peso_ref = float(fila_ref['peso'].values[0])
-        consumo_ref = float(fila_ref['consumo'].values[0])
-        fcr_ref = float(fila_ref['fcr'].values[0]) if 'fcr' in fila_ref.columns else consumo_ref / peso_ref
-        desvio_peso = peso_final - peso_ref
-        desvio_porc = 100 * desvio_peso / peso_ref
-        st.markdown(f"""
-        **Resultados respecto a genética**  
-        - Peso ideal genética: {peso_ref:.2f} kg  
-        - Peso final simulado: {peso_final:.2f} kg  
-        - Desviación: {desvio_peso:+.2f} kg ({desvio_porc:+.1f}%)  
-        - Consumo ideal genética: {consumo_ref:.2f} kg  
-        - Consumo simulado: {consumo_total:.2f} kg  
-        - FCR genética: {fcr_ref:.2f}  
-        - FCR simulado: {fcr_real:.2f}  
-        - Mortalidad: {mortalidad:.2f}%  
-        - Aves vendibles: {aves_finales:.0f}  
-        """)
-        if abs(desvio_porc) > 5:
-            st.error("¡Atención! El peso final se desvía más de un 5% respecto a la genética.")
-        else:
-            st.success("El peso final está dentro del rango esperado para la genética.")
+    gdp = (peso_final - peso_inicial) / (edad_salida - edad_inicial) if (edad_salida - edad_inicial) > 0 else 0
+    consumo_diario = consumo_total / edad_salida if edad_salida > 0 else 0
+    iep = (peso_final * (aves_finales/aves_ini) * 100) / (edad_salida * fcr_real) if (edad_salida * fcr_real) > 0 else 0
+    prod_total = aves_finales * peso_final
+    costo_alim = consumo_total * aves_ini * precio_alimento_kg
+    ingreso_bruto = prod_total * precio_venta_kg
+    margen_neto = ingreso_bruto - costo_alim
+
+    # KPIs tablero
+    st.markdown("### KPIs productivos y económicos")
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    kpi1.metric("GDP (kg/día)", f"{gdp:.3f}")
+    kpi2.metric("IEP", f"{iep:.1f}")
+    kpi3.metric("Rentabilidad (USD)", f"{margen_neto:,.2f}")
+    kpi4.metric("Producción total carne (kg)", f"{prod_total:,.0f}")
+
+    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+    kpi5.metric("Consumo diario (kg/ave)", f"{consumo_diario:.3f}")
+    kpi6.metric("Costo total alimento (USD)", f"{costo_alim:,.2f}")
+    kpi7.metric("Ingreso bruto (USD)", f"{ingreso_bruto:,.2f}")
+    kpi8.metric("Mortalidad (%)", f"{mortalidad:.2f}")
+
+    st.markdown("---")
+
+    # Apartado para guardar y comparar escenarios
+    nombre_escenario = st.text_input("Nombre del escenario", f"Escenario {len(st.session_state['escenarios_guardados'])+1}")
+    if st.button("Guardar este escenario"):
+        st.session_state['escenarios_guardados'].append({
+            "nombre": nombre_escenario,
+            "linea": linea_sel,
+            "edad_ini": edad_inicial,
+            "edad_fin": edad_salida,
+            "aves_ini": aves_ini,
+            "aves_finales": aves_finales,
+            "peso_ini": peso_inicial,
+            "peso_fin": peso_final,
+            "consumo": consumo_total,
+            "fcr": fcr_real,
+            "gdp": gdp,
+            "iep": iep,
+            "mortalidad": mortalidad,
+            "prod_total": prod_total,
+            "costo_alim": costo_alim,
+            "precio_alimento_kg": precio_alimento_kg,
+            "precio_venta_kg": precio_venta_kg,
+            "ingreso_bruto": ingreso_bruto,
+            "margen_neto": margen_neto,
+            "consumo_diario": consumo_diario
+        })
+        st.success("¡Escenario guardado!")
+
+    # Visualización de variables productivas/económicas en pestañas y combinadas
+    st.markdown("### Visualización de variables")
+    tabs = st.tabs([
+        "Peso", "Consumo", "FCR", "GDP", "IEP", "Consumo diario", "Producción total", "Rentabilidad", "Gráfico Combinado"
+    ])
+    edades = df_gen['edad']
+    # GDP por edad
+    gdp_curve = [ (df_gen.loc[i, "peso"] - df_gen.loc[0, "peso"]) / (df_gen.loc[i,"edad"]-df_gen.loc[0,"edad"]) if (df_gen.loc[i,"edad"]-df_gen.loc[0,"edad"])>0 else 0 for i in range(len(df_gen))]
+    # IEP por edad
+    iep_curve = [ 
+        (df_gen.loc[i, "peso"] * (aves_finales/aves_ini) * 100) / (df_gen.loc[i,"edad"] * df_gen.loc[i,"fcr"])
+        if (df_gen.loc[i,"edad"] * df_gen.loc[i,"fcr"])>0 else 0
+        for i in range(len(df_gen))
+    ]
+    consumo_diario_curve = [df_gen.loc[i,"consumo"]/df_gen.loc[i,"edad"] if df_gen.loc[i,"edad"]>0 else 0 for i in range(len(df_gen))]
+    prod_total_curve = [aves_finales * df_gen.loc[i,"peso"] for i in range(len(df_gen))]
+    rentabilidad_curve = [ (prod_total_curve[i]*precio_venta_kg) - (df_gen.loc[i,"consumo"]*aves_ini*precio_alimento_kg) for i in range(len(df_gen))]
+    # Tab individual
+    with tabs[0]:
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=df_gen['edad'], y=df_gen[col_grafico], mode="lines+markers", name=f"Curva {grafico_sel} {linea_sel}"))
-        y_sim = None
-        if col_grafico == "peso":
-            y_sim = peso_final
-        elif col_grafico == "consumo":
-            y_sim = consumo_total
-        elif col_grafico == "fcr":
-            y_sim = fcr_real
-        if y_sim is not None:
-            fig.add_trace(go.Scatter(
-                x=[edad_salida], y=[y_sim], mode="markers+text", name="Simulación usuario",
-                marker=dict(size=16, color="red", symbol="x"),
-                text=["Simulación"], textposition="top center"
-            ))
-        fig.update_layout(
-            title=f"{grafico_sel} vs Edad",
-            xaxis_title="Edad (días)", 
-            yaxis_title=grafico_sel
-        )
+        fig.add_trace(go.Scatter(x=edades, y=df_gen['peso'], mode="lines+markers", name="Peso"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[peso_final], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="Peso vs Edad", xaxis_title="Edad (días)", yaxis_title="Peso (kg)")
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("No se encontró la edad seleccionada en la curva genética.")
+    with tabs[1]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=df_gen['consumo'], mode="lines+markers", name="Consumo"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[consumo_total], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="Consumo vs Edad", xaxis_title="Edad (días)", yaxis_title="Consumo (kg/ave)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[2]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=df_gen['fcr'], mode="lines+markers", name="FCR"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[fcr_real], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="FCR vs Edad", xaxis_title="Edad (días)", yaxis_title="FCR")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[3]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=gdp_curve, mode="lines+markers", name="GDP"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[gdp], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="GDP vs Edad", xaxis_title="Edad (días)", yaxis_title="GDP (kg/día)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[4]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=iep_curve, mode="lines+markers", name="IEP"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[iep], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="IEP vs Edad", xaxis_title="Edad (días)", yaxis_title="IEP")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[5]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=consumo_diario_curve, mode="lines+markers", name="Consumo Diario"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[consumo_diario], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="Consumo diario vs Edad", xaxis_title="Edad (días)", yaxis_title="Consumo diario (kg/ave)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[6]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=prod_total_curve, mode="lines+markers", name="Producción total"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[prod_total], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="Producción total carne vs Edad", xaxis_title="Edad (días)", yaxis_title="Producción total (kg)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[7]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=edades, y=rentabilidad_curve, mode="lines+markers", name="Rentabilidad"))
+        fig.add_trace(go.Scatter(x=[edad_salida], y=[margen_neto], mode="markers", name="Simulación", marker=dict(size=16, color="red")))
+        fig.update_layout(title="Rentabilidad vs Edad", xaxis_title="Edad (días)", yaxis_title="Rentabilidad (USD)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[8]:
+        # Gráfico combinado personalizado
+        opciones = st.multiselect(
+            "Elige las variables a visualizar en el gráfico combinado",
+            ["Peso", "Consumo", "FCR", "GDP", "IEP", "Consumo diario", "Producción total", "Rentabilidad"],
+            default=["Peso", "Consumo"]
+        )
+        fig = go.Figure()
+        if "Peso" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=df_gen['peso'], mode="lines+markers", name="Peso"))
+        if "Consumo" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=df_gen['consumo'], mode="lines+markers", name="Consumo"))
+        if "FCR" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=df_gen['fcr'], mode="lines+markers", name="FCR"))
+        if "GDP" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=gdp_curve, mode="lines+markers", name="GDP"))
+        if "IEP" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=iep_curve, mode="lines+markers", name="IEP"))
+        if "Consumo diario" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=consumo_diario_curve, mode="lines+markers", name="Consumo Diario"))
+        if "Producción total" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=prod_total_curve, mode="lines+markers", name="Producción total"))
+        if "Rentabilidad" in opciones:
+            fig.add_trace(go.Scatter(x=edades, y=rentabilidad_curve, mode="lines+markers", name="Rentabilidad"))
+        fig.update_layout(title="Variables seleccionadas vs Edad", xaxis_title="Edad (días)")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Comparador de escenarios guardados
+    if len(st.session_state['escenarios_guardados']) > 0:
+        st.markdown("### Comparador de escenarios guardados")
+        df_hist = pd.DataFrame(st.session_state['escenarios_guardados'])
+        st.dataframe(df_hist)
+        var_comp = st.selectbox("Selecciona variable a comparar", [
+            "peso_fin","consumo","fcr","gdp","iep","prod_total","costo_alim","ingreso_bruto","margen_neto","consumo_diario"
+        ], format_func=lambda x: {
+            "peso_fin":"Peso final",
+            "consumo":"Consumo acumulado",
+            "fcr":"FCR",
+            "gdp":"GDP",
+            "iep":"IEP",
+            "prod_total":"Producción total",
+            "costo_alim":"Costo alimento",
+            "ingreso_bruto":"Ingreso bruto",
+            "margen_neto":"Rentabilidad",
+            "consumo_diario":"Consumo diario"
+        }[x])
+        fig = go.Figure()
+        for idx, row in df_hist.iterrows():
+            fig.add_trace(go.Bar(
+                name=row["nombre"],
+                x=[row["nombre"]], y=[row[var_comp]]
+            ))
+        fig.update_layout(title=f"Comparativa de {var_comp}", barmode="group")
+        st.plotly_chart(fig)
 
 elif menu == "Simulador Económico":
     st.header("Simulador Económico")
@@ -311,16 +384,34 @@ elif menu == "Simulador Económico":
 
 elif menu == "Comparador de Escenarios":
     st.header("Comparador de Escenarios")
-    formula1 = st.text_input("Fórmula 1", "Fórmula A")
-    margen1 = st.number_input("Margen por ave fórmula 1", value=0.45, key="m1")
-    formula2 = st.text_input("Fórmula 2", "Fórmula B")
-    margen2 = st.number_input("Margen por ave fórmula 2", value=0.55, key="m2")
-    fig = go.Figure([
-        go.Bar(name=formula1, x=["Margen"], y=[margen1]),
-        go.Bar(name=formula2, x=["Margen"], y=[margen2])
-    ])
-    fig.update_layout(barmode='group', title="Comparativo de margen por ave")
-    st.plotly_chart(fig)
+    # Muestra el comparador también desde aquí
+    if len(st.session_state['escenarios_guardados']) > 0:
+        df_hist = pd.DataFrame(st.session_state['escenarios_guardados'])
+        st.dataframe(df_hist)
+        var_comp = st.selectbox("Selecciona variable a comparar", [
+            "peso_fin","consumo","fcr","gdp","iep","prod_total","costo_alim","ingreso_bruto","margen_neto","consumo_diario"
+        ], format_func=lambda x: {
+            "peso_fin":"Peso final",
+            "consumo":"Consumo acumulado",
+            "fcr":"FCR",
+            "gdp":"GDP",
+            "iep":"IEP",
+            "prod_total":"Producción total",
+            "costo_alim":"Costo alimento",
+            "ingreso_bruto":"Ingreso bruto",
+            "margen_neto":"Rentabilidad",
+            "consumo_diario":"Consumo diario"
+        }[x])
+        fig = go.Figure()
+        for idx, row in df_hist.iterrows():
+            fig.add_trace(go.Bar(
+                name=row["nombre"],
+                x=[row["nombre"]], y=[row[var_comp]]
+            ))
+        fig.update_layout(title=f"Comparativa de {var_comp}", barmode="group")
+        st.plotly_chart(fig)
+    else:
+        st.info("No hay escenarios guardados aún. Guarda escenarios desde el Simulador Productivo para comparar.")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
