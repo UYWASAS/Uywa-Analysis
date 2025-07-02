@@ -81,6 +81,26 @@ st.markdown(
         border: none !important;
         font-weight: 600 !important;
     }
+    /* Botón de file uploader: texto y borde azul corporativo */
+    button[title="Browse files"] {
+        color: #204080 !important;
+        font-weight: 700 !important;
+        background: #fff !important;
+        border: 2px solid #204080 !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+    button[title="Browse files"]:hover {
+        background: #204080 !important;
+        color: #fff !important;
+        border: 2px solid #204080 !important;
+    }
+    /* Drag and drop zone con borde azul corporativo */
+    div[data-testid="stFileUploaderDropzone"] {
+        border: 1.5px solid #204080 !important;
+        border-radius: 12px !important;
+        background: #f8fafc !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
