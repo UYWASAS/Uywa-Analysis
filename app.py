@@ -5,20 +5,90 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
+# ------------------ ESTILO CORPORATIVO AVANZADO ------------------
+st.markdown(
+    """
+    <style>
+    body, .stApp {
+        background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
+    }
+    .main-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 2.5rem 2rem 2rem 2rem;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04);
+        min-height: 80vh;
+    }
+    .stApp > header {
+        background: transparent;
+    }
+    .stSidebar {
+        background: #19345c !important;
+    }
+    .css-1v0mbdj, .css-1d391kg {
+        background: #19345c !important;
+    }
+    .css-1r6slb0 {
+        background: #19345c !important;
+    }
+    .stSidebar [data-testid="stSidebarNav"] {
+        background: #19345c;
+        color: #fff;
+    }
+    .stSidebar [data-testid="stSidebarNav"] svg {
+        color: #fff;
+    }
+    .stSidebar .stImage > img {
+        border-radius: 15px;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 12px rgba(32,64,128,.14);
+        margin-bottom: 14px;
+    }
+    .stSidebar hr {
+        border-top:1px solid #2e4771 !important;
+        margin: 10px 0 !important;
+    }
+    .stButton>button {
+        background-color: #204080 !important;
+        color: #fff !important;
+        border-radius: 6px !important;
+        border: none !important;
+        font-weight: 600;
+    }
+    .stNumberInput input {
+        background: #f5f8fc;
+        border-radius: 6px;
+    }
+    .stDataFrame, .dataframe, .stTable {
+        background: #f9fbfd;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .stSelectbox, .stMultiSelect, .stTextInput {
+        background: #f4f8fa;
+        border-radius: 6px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # -------------------- LOGO Y MARCA EN LA SIDEBAR --------------------
 with st.sidebar:
-    st.image("nombre_archivo_logo.png", width=80)
+    st.image("nombre_archivo_logo.png", width=90)
     st.markdown(
         """
         <div style='text-align: center;'>
-            <div style='font-size:22px;color:#204080; margin-top: 10px;'>
+            <div style='font-size:24px;font-family:Montserrat,Arial;color:#e6f0fa; margin-top: 10px;letter-spacing:1px;'>
                 <b>UYWA-NUTRITION<sup>®</sup></b>
             </div>
-            <div style='font-size:13px;color:#4a6074; margin-top: 5px;'>
+            <div style='font-size:13px;color:#c1d0df; margin-top: 5px; font-family:Montserrat,Arial;'>
                 Nutrición de Precisión Basada en Evidencia
             </div>
-            <hr style='border-top:1px solid #e5eefa; margin: 10px 0;'>
-            <div style='font-size:12px;color:#888; margin-top: 8px;'>
+            <hr style='border-top:1px solid #2e4771; margin: 10px 0;'>
+            <div style='font-size:12px;color:#b2c4d6; margin-top: 8px;'>
                 <b>Contacto:</b> uywasas@gmail.com<br>
                 Derechos reservados © 2025
             </div>
@@ -27,6 +97,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+st.markdown("<div class='main-card'>", unsafe_allow_html=True)
 st.title("Módulo de Inteligencia Productiva Avícola")
 
 menu = st.sidebar.radio(
@@ -92,15 +163,13 @@ elif menu == "Formulación de Dieta":
             df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
             df_formula["proporcion"] = df_formula["proporcion"] / 100
             st.dataframe(df_formula)
-            # Cálculo de aportes
             nutrientes = ["proteina", "energia", "lisina", "metionina", "Ca", "P"]
             resultado = {}
             for nutr in nutrientes:
-                resultado[nutr] = (df_formula["proporcion"] * 
+                resultado[nutr] = (df_formula["proporcion"] *
                     df_ing.set_index("nombre")[nutr].reindex(df_formula["ingrediente"]).values).sum()
             st.subheader("Aportes de nutrientes (por tonelada)")
             st.json(resultado)
-            # Costo por tonelada
             precios = df_ing.set_index("nombre")["precio"].reindex(df_formula["ingrediente"]).values
             costo_total = (df_formula["proporcion"] * precios).sum()
             st.success(f"Costo estimado por tonelada: U$D {costo_total:,.2f}")
@@ -116,7 +185,6 @@ elif menu == "Simulador Productivo":
     consumo = st.number_input("Consumo acumulado (kg)", min_value=1.0, max_value=10.0, value=4.5)
     fcr = st.number_input("Conversión alimenticia (FCR)", min_value=1.2, max_value=2.5, value=1.8)
     st.write(f"Peso final: {peso} kg | Consumo acumulado: {consumo} kg | FCR: {fcr}")
-    # Gráfico ejemplo
     if df_lin is not None:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df_lin["edad"], y=df_lin["peso"], mode="lines+markers", name="Curva ideal"))
@@ -150,5 +218,10 @@ elif menu == "Comparador de Escenarios":
     fig.update_layout(barmode='group', title="Comparativo de margen por ave")
     st.plotly_chart(fig)
 
+st.markdown("</div>", unsafe_allow_html=True)
+
 st.sidebar.markdown("---")
-st.sidebar.markdown("Desarrollado como MVP para UYWA-NUTRITION®. Expande las funciones según tus necesidades.")
+st.sidebar.markdown(
+    "<div style='font-size:11px;color:#b2c4d6;text-align:center'>Desarrollado como MVP para <b>UYWA-NUTRITION®</b></div>",
+    unsafe_allow_html=True
+)
