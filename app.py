@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
 
-# ----------- ESTILO CORPORATIVO (igual que antes) -----------
+# ----------- ESTILO CORPORATIVO: Sidebar, radios y centro legibles -----------
 st.markdown(
     """
     <style>
@@ -197,6 +197,10 @@ elif menu == "Formulación de Dieta":
 
         # Determinar qué columnas son nutrientes (todas excepto nombre y precio)
         nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
+
+        # Forzar todos los nutrientes a tipo numérico
+        for nutr in nutrientes:
+            df_ing[nutr] = pd.to_numeric(df_ing[nutr], errors='coerce')
 
         seleccionados = st.multiselect("Selecciona ingredientes", df_ing[nombre_col].tolist())
         proporciones = []
