@@ -101,6 +101,17 @@ st.markdown(
         border-radius: 12px !important;
         background: #f8fafc !important;
     }
+    /* Forzar color de texto en celdas de tablas/dataframes de Streamlit */
+    div[data-testid="stDataFrame"] * {
+        color: #19345c !important;
+        background: transparent !important;
+    }
+    div[data-testid="stDataFrame"] td, 
+    div[data-testid="stDataFrame"] th {
+        color: #19345c !important;
+        background: transparent !important;
+        font-weight: 600 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -148,7 +159,8 @@ def cargar_archivo(file):
     if file.name.endswith('.csv'):
         return pd.read_csv(file)
     else:
-        return pd.read_excel(file)
+        # Siempre toma la primera hoja con encabezado
+        return pd.read_excel(file, sheet_name=0)
 
 if 'ingredientes' not in st.session_state:
     st.session_state['ingredientes'] = None
@@ -164,19 +176,31 @@ if menu == "Carga de Datos":
         df_ing = cargar_archivo(ing)
         st.session_state['ingredientes'] = df_ing
         st.success("Ingredientes cargados.")
-        st.dataframe(df_ing)
+        # DEPURACIÓN: muestra shape y columnas
+        if df_ing is not None:
+            st.write("Shape:", df_ing.shape)
+            st.write("Columns:", list(df_ing.columns))
+            st.dataframe(df_ing)
+        else:
+            st.error("No se pudo leer el archivo o está vacío.")
     lin = st.file_uploader("Líneas genéticas (csv/xlsx)", type=["csv", "xlsx"])
     if lin:
         df_lin = cargar_archivo(lin)
         st.session_state['lineas'] = df_lin
         st.success("Líneas genéticas cargadas.")
-        st.dataframe(df_lin)
+        if df_lin is not None:
+            st.dataframe(df_lin)
+        else:
+            st.error("No se pudo leer el archivo o está vacío.")
     pre = st.file_uploader("Precios de venta (csv/xlsx)", type=["csv", "xlsx"])
     if pre:
         df_pre = cargar_archivo(pre)
         st.session_state['precios'] = df_pre
         st.success("Precios cargados.")
-        st.dataframe(df_pre)
+        if df_pre is not None:
+            st.dataframe(df_pre)
+        else:
+            st.error("No se pudo leer el archivo o está vacío.")
 
 elif menu == "Formulación de Dieta":
     st.header("Panel de Formulación de Dieta")
