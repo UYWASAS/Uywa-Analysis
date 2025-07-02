@@ -140,7 +140,6 @@ st.title("Módulo de Inteligencia Productiva Avícola")
 menu = st.sidebar.radio(
     "Selecciona una sección",
     [
-        "Carga de Datos",
         "Formulación de Dieta",
         "Simulador Productivo",
         "Simulador Económico",
@@ -159,46 +158,41 @@ def cargar_archivo(file):
 
 if 'ingredientes' not in st.session_state:
     st.session_state['ingredientes'] = None
-if 'lineas' not in st.session_state:
-    st.session_state['lineas'] = None
-if 'precios' not in st.session_state:
-    st.session_state['precios'] = None
 
-if menu == "Carga de Datos":
-    st.header("Carga de Datos de Entrada")
-    ing = st.file_uploader("Ingredientes (csv/xlsx)", type=["csv", "xlsx"])
-    if ing: 
-        df_ing = cargar_archivo(ing)
-        st.session_state['ingredientes'] = df_ing
-        st.success("Ingredientes cargados.")
-        st.dataframe(df_ing)
-    lin = st.file_uploader("Líneas genéticas (csv/xlsx, ambas líneas en una hoja, columna 'linea')", type=["csv", "xlsx"])
-    if lin:
-        df_lin = cargar_archivo(lin)
-        st.session_state['lineas'] = df_lin
-        st.success("Líneas genéticas cargadas.")
-        st.dataframe(df_lin)
-    pre = st.file_uploader("Precios de venta (csv/xlsx)", type=["csv", "xlsx"])
-    if pre:
-        df_pre = cargar_archivo(pre)
-        st.session_state['precios'] = df_pre
-        st.success("Precios cargados.")
-        st.dataframe(df_pre)
+# ------- BLOQUE DE DATOS GENÉTICOS INCRUSTADO Y EDITABLE --------
+# Datos base (puedes expandir según tu necesidad)
+datos_geneticos_base = pd.DataFrame({
+    "linea": ["Cobb", "Cobb", "Cobb", "Cobb", "Ross", "Ross", "Ross", "Ross"],
+    "edad": [28, 35, 42, 49, 28, 35, 42, 49],
+    "peso": [1.35, 1.95, 2.5, 3.05, 1.35, 1.95, 2.5, 3.05],
+    "consumo": [2.2, 3.1, 4.3, 5.6, 2.2, 3.1, 4.3, 5.6],
+    "fcr": [1.63, 1.59, 1.72, 1.84, 1.63, 1.59, 1.72, 1.84]
+})
 
-elif menu == "Formulación de Dieta":
+if "genetica_edit" not in st.session_state:
+    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
+
+elif not isinstance(st.session_state["genetica_edit"], pd.DataFrame):
+    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
+
+if menu == "Formulación de Dieta":
     st.header("Panel de Formulación de Dieta")
     df_ing = st.session_state['ingredientes']
     if df_ing is None:
-        st.warning("Primero debes cargar los ingredientes.")
+        ing = st.file_uploader("Carga ingredientes (csv/xlsx)", type=["csv", "xlsx"])
+        if ing:
+            df_ing = cargar_archivo(ing)
+            st.session_state['ingredientes'] = df_ing
+            st.success("Ingredientes cargados.")
+            st.dataframe(df_ing)
+        else:
+            st.warning("Primero debes cargar los ingredientes.")
     else:
         nombre_col = "Ingrediente"
         precio_col = "precio"  # cambia si tu archivo tiene otro nombre para el precio
-
         nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
-
         for nutr in nutrientes:
             df_ing[nutr] = pd.to_numeric(df_ing[nutr], errors='coerce')
-
         seleccionados = st.multiselect("Selecciona ingredientes", df_ing[nombre_col].tolist())
         proporciones = []
         for ingr in seleccionados:
@@ -208,17 +202,13 @@ elif menu == "Formulación de Dieta":
             df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
             df_formula["proporcion"] = df_formula["proporcion"] / 100
             st.dataframe(df_formula)
-
-            # Calcular aportes de todos los nutrientes y mostrar en tabla
             resultado = {}
             for nutr in nutrientes:
                 valores_nutr = df_ing.set_index(nombre_col)[nutr].reindex(df_formula["ingrediente"]).values
                 resultado[nutr] = (df_formula["proporcion"] * valores_nutr).sum()
             df_resultado = pd.DataFrame(resultado, index=["Aporte total"])
             st.subheader("Aportes de nutrientes (por tonelada)")
-            st.dataframe(df_resultado.T, use_container_width=True)  # Nutrientes como filas
-
-            # Costo total
+            st.dataframe(df_resultado.T, use_container_width=True)
             if precio_col in df_ing.columns:
                 precios = df_ing.set_index(nombre_col)[precio_col].reindex(df_formula["ingrediente"]).values
                 costo_total = (df_formula["proporcion"] * precios).sum()
@@ -226,90 +216,85 @@ elif menu == "Formulación de Dieta":
 
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
-    df_lineas = st.session_state['lineas']
-    if df_lineas is not None and 'linea' in df_lineas.columns:
-        # Mostramos todas las genéticas cargadas
-        st.subheader("Curva genética de referencia:")
-        st.dataframe(df_lineas)
-        # Selector de línea genética
-        lineas_disponibles = list(df_lineas['linea'].unique())
-        linea_sel = st.selectbox("Selecciona línea genética", lineas_disponibles)
-        df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
-        st.success(f"Línea seleccionada: {linea_sel}")
-        st.dataframe(df_gen)
-
-        # Parámetro a graficar
-        opciones_grafico = {
-            "Peso (kg)": "peso",
-            "Consumo acumulado (kg)": "consumo",
-            "FCR": "fcr"
-        }
-        grafico_sel = st.selectbox("¿Qué quieres graficar?", list(opciones_grafico.keys()))
-        col_grafico = opciones_grafico[grafico_sel]
-
-        # Entradas del usuario
-        aves_ini = st.number_input("Aves iniciales", min_value=1000, max_value=100000, value=10000)
-        mortalidad = st.number_input("Mortalidad (%)", min_value=0.0, max_value=20.0, value=5.0)
-        edad_salida = st.number_input("Edad de salida (días)", min_value=1, max_value=int(df_gen['edad'].max()), value=42)
-        peso_final = st.number_input("Peso final esperado (kg)", min_value=0.5, max_value=5.0, value=2.5)
-        consumo_total = st.number_input("Consumo acumulado (kg/ave)", min_value=1.0, max_value=10.0, value=4.5)
-
-        aves_finales = aves_ini * (1 - mortalidad/100)
-        fcr_real = consumo_total / peso_final if peso_final > 0 else np.nan
-
-        # Genética referencia
-        fila_ref = df_gen[df_gen['edad'] == edad_salida]
-        if not fila_ref.empty:
-            peso_ref = float(fila_ref['peso'].values[0])
-            consumo_ref = float(fila_ref['consumo'].values[0])
-            fcr_ref = float(fila_ref['fcr'].values[0]) if 'fcr' in fila_ref.columns else consumo_ref / peso_ref
-            desvio_peso = peso_final - peso_ref
-            desvio_porc = 100 * desvio_peso / peso_ref
-            st.markdown(f"""
-            **Resultados respecto a genética**  
-            - Peso ideal genética: {peso_ref:.2f} kg  
-            - Peso final simulado: {peso_final:.2f} kg  
-            - Desviación: {desvio_peso:+.2f} kg ({desvio_porc:+.1f}%)  
-            - Consumo ideal genética: {consumo_ref:.2f} kg  
-            - Consumo simulado: {consumo_total:.2f} kg  
-            - FCR genética: {fcr_ref:.2f}  
-            - FCR simulado: {fcr_real:.2f}  
-            - Mortalidad: {mortalidad:.2f}%  
-            - Aves vendibles: {aves_finales:.0f}  
-            """)
-            if abs(desvio_porc) > 5:
-                st.error("¡Atención! El peso final se desvía más de un 5% respecto a la genética.")
-            else:
-                st.success("El peso final está dentro del rango esperado para la genética.")
-
-            # Gráfico: curva seleccionada vs punto simulado
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=df_gen['edad'], y=df_gen[col_grafico], mode="lines+markers", name=f"Curva {grafico_sel} {linea_sel}"))
-            # Poner el punto simulado sólo si corresponde
-            y_sim = None
-            if col_grafico == "peso":
-                y_sim = peso_final
-            elif col_grafico == "consumo":
-                y_sim = consumo_total
-            elif col_grafico == "fcr":
-                y_sim = fcr_real
-            if y_sim is not None:
-                fig.add_trace(go.Scatter(
-                    x=[edad_salida], y=[y_sim], mode="markers+text", name="Simulación usuario",
-                    marker=dict(size=16, color="red", symbol="x"),
-                    text=["Simulación"], textposition="top center"
-                ))
-            fig.update_layout(
-                title=f"{grafico_sel} vs Edad",
-                xaxis_title="Edad (días)", 
-                yaxis_title=grafico_sel
-            )
-            st.plotly_chart(fig, use_container_width=True)
+    # --- Tabla genética editable y embebida ---
+    with st.expander("Mostrar y editar genética cargada"):
+        df_edit = st.data_editor(
+            st.session_state["genetica_edit"], 
+            num_rows="dynamic", 
+            use_container_width=True, 
+            key="edit_genetica"
+        )
+        if st.button("Guardar cambios en la genética"):
+            st.session_state["genetica_edit"] = df_edit
+            st.success("¡Cambios guardados!")
+    df_lineas = st.session_state["genetica_edit"].copy()
+    # Selector de línea genética
+    lineas_disponibles = list(df_lineas['linea'].unique())
+    linea_sel = st.selectbox("Selecciona línea genética", lineas_disponibles)
+    df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
+    st.success(f"Línea seleccionada: {linea_sel}")
+    # Parámetro a graficar
+    opciones_grafico = {
+        "Peso (kg)": "peso",
+        "Consumo acumulado (kg)": "consumo",
+        "FCR": "fcr"
+    }
+    grafico_sel = st.selectbox("¿Qué quieres graficar?", list(opciones_grafico.keys()))
+    col_grafico = opciones_grafico[grafico_sel]
+    aves_ini = st.number_input("Aves iniciales", min_value=1000, max_value=100000, value=10000)
+    mortalidad = st.number_input("Mortalidad (%)", min_value=0.0, max_value=20.0, value=5.0)
+    edad_salida = st.number_input("Edad de salida (días)", min_value=1, max_value=int(df_gen['edad'].max()), value=42)
+    peso_final = st.number_input("Peso final esperado (kg)", min_value=0.5, max_value=5.0, value=2.5)
+    consumo_total = st.number_input("Consumo acumulado (kg/ave)", min_value=1.0, max_value=10.0, value=4.5)
+    aves_finales = aves_ini * (1 - mortalidad/100)
+    fcr_real = consumo_total / peso_final if peso_final > 0 else np.nan
+    fila_ref = df_gen[df_gen['edad'] == edad_salida]
+    if not fila_ref.empty:
+        peso_ref = float(fila_ref['peso'].values[0])
+        consumo_ref = float(fila_ref['consumo'].values[0])
+        fcr_ref = float(fila_ref['fcr'].values[0]) if 'fcr' in fila_ref.columns else consumo_ref / peso_ref
+        desvio_peso = peso_final - peso_ref
+        desvio_porc = 100 * desvio_peso / peso_ref
+        st.markdown(f"""
+        **Resultados respecto a genética**  
+        - Peso ideal genética: {peso_ref:.2f} kg  
+        - Peso final simulado: {peso_final:.2f} kg  
+        - Desviación: {desvio_peso:+.2f} kg ({desvio_porc:+.1f}%)  
+        - Consumo ideal genética: {consumo_ref:.2f} kg  
+        - Consumo simulado: {consumo_total:.2f} kg  
+        - FCR genética: {fcr_ref:.2f}  
+        - FCR simulado: {fcr_real:.2f}  
+        - Mortalidad: {mortalidad:.2f}%  
+        - Aves vendibles: {aves_finales:.0f}  
+        """)
+        if abs(desvio_porc) > 5:
+            st.error("¡Atención! El peso final se desvía más de un 5% respecto a la genética.")
         else:
-            st.warning("No se encontró la edad seleccionada en la curva genética.")
+            st.success("El peso final está dentro del rango esperado para la genética.")
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df_gen['edad'], y=df_gen[col_grafico], mode="lines+markers", name=f"Curva {grafico_sel} {linea_sel}"))
+        y_sim = None
+        if col_grafico == "peso":
+            y_sim = peso_final
+        elif col_grafico == "consumo":
+            y_sim = consumo_total
+        elif col_grafico == "fcr":
+            y_sim = fcr_real
+        if y_sim is not None:
+            fig.add_trace(go.Scatter(
+                x=[edad_salida], y=[y_sim], mode="markers+text", name="Simulación usuario",
+                marker=dict(size=16, color="red", symbol="x"),
+                text=["Simulación"], textposition="top center"
+            ))
+        fig.update_layout(
+            title=f"{grafico_sel} vs Edad",
+            xaxis_title="Edad (días)", 
+            yaxis_title=grafico_sel
+        )
+        st.plotly_chart(fig, use_container_width=True)
     else:
-        st.warning("Debes cargar un archivo de líneas genéticas con columna 'linea' para comparar.")
+        st.warning("No se encontró la edad seleccionada en la curva genética.")
 
 elif menu == "Simulador Económico":
     st.header("Simulador Económico")
