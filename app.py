@@ -233,6 +233,16 @@ elif menu == "Simulador Productivo":
         df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy()
         st.success(f"Línea seleccionada: {linea_sel}")
         st.dataframe(df_gen)
+        
+        # Parámetro a graficar
+        opciones_grafico = {
+            "Peso (kg)": "peso",
+            "Consumo acumulado (kg)": "consumo",
+            "FCR": "fcr"
+        }
+        grafico_sel = st.selectbox("¿Qué quieres graficar?", list(opciones_grafico.keys()))
+        col_grafico = opciones_grafico[grafico_sel]
+
         # Entradas del usuario
         aves_ini = st.number_input("Aves iniciales", min_value=1000, max_value=100000, value=10000)
         mortalidad = st.number_input("Mortalidad (%)", min_value=0.0, max_value=20.0, value=5.0)
@@ -240,7 +250,6 @@ elif menu == "Simulador Productivo":
         peso_final = st.number_input("Peso final esperado (kg)", min_value=0.5, max_value=5.0, value=2.5)
         consumo_total = st.number_input("Consumo acumulado (kg/ave)", min_value=1.0, max_value=10.0, value=4.5)
 
-        # Cálculos
         aves_finales = aves_ini * (1 - mortalidad/100)
         fcr_real = consumo_total / peso_final if peso_final > 0 else np.nan
 
@@ -264,56 +273,37 @@ elif menu == "Simulador Productivo":
             - Mortalidad: {mortalidad:.2f}%  
             - Aves vendibles: {aves_finales:.0f}  
             """)
-            # Alerta si la desviación es importante
             if abs(desvio_porc) > 5:
                 st.error("¡Atención! El peso final se desvía más de un 5% respecto a la genética.")
             else:
                 st.success("El peso final está dentro del rango esperado para la genética.")
 
-            # Gráfico: curva genética vs punto simulado
+            # Gráfico: curva seleccionada vs punto simulado
             fig = go.Figure()
             fig.add_trace(go.Scatter(
-                x=df_gen['edad'], y=df_gen['peso'], mode="lines+markers", name=f"Curva {linea_sel}"))
-            fig.add_trace(go.Scatter(
-                x=[edad_salida], y=[peso_final], mode="markers", name="Resultado simulado",
-                marker=dict(size=14, color="red", symbol="x")))
-            fig.update_layout(title="Peso vs Edad", xaxis_title="Edad (días)", yaxis_title="Peso (kg)")
+                x=df_gen['edad'], y=df_gen[col_grafico], mode="lines+markers", name=f"Curva {grafico_sel} {linea_sel}"))
+            # Poner el punto simulado sólo si corresponde
+            y_sim = None
+            if col_grafico == "peso":
+                y_sim = peso_final
+            elif col_grafico == "consumo":
+                y_sim = consumo_total
+            elif col_grafico == "fcr":
+                y_sim = fcr_real
+            if y_sim is not None:
+                fig.add_trace(go.Scatter(
+                    x=[edad_salida], y=[y_sim], mode="markers+text", name="Simulación usuario",
+                    marker=dict(size=16, color="red", symbol="x"),
+                    text=["Simulación"], textposition="top center"
+                ))
+            fig.update_layout(
+                title=f"{grafico_sel} vs Edad",
+                xaxis_title="Edad (días)", 
+                yaxis_title=grafico_sel
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("No se encontró la edad seleccionada en la curva genética.")
-
-        # Guardado y comparación básica de escenarios
-        if 'historial_productivo' not in st.session_state:
-            st.session_state['historial_productivo'] = []
-        if st.button("Guardar este escenario"):
-            escenario = {
-                "linea": linea_sel,
-                "edad": edad_salida,
-                "peso": peso_final,
-                "consumo": consumo_total,
-                "fcr": fcr_real,
-                "mortalidad": mortalidad,
-                "aves_ini": aves_ini,
-                "aves_finales": aves_finales,
-                "desvio_porc": desvio_porc
-            }
-            st.session_state['historial_productivo'].append(escenario)
-            st.success("¡Escenario guardado!")
-
-        if len(st.session_state['historial_productivo']) > 0:
-            st.subheader("Comparativo de escenarios guardados")
-            df_hist = pd.DataFrame(st.session_state['historial_productivo'])
-            st.dataframe(df_hist)
-            # Gráfico comparativo de pesos finales
-            fig2 = go.Figure()
-            for idx, row in df_hist.iterrows():
-                fig2.add_trace(go.Bar(
-                    name=f"{row['linea']} ({int(row['edad'])} d)",
-                    x=[f"Escenario {idx+1}"], y=[row["peso"]],
-                    marker_color="blue" if row["linea"]==lineas_disponibles[0] else "orange"
-                ))
-            fig2.update_layout(title="Peso final por escenario", barmode="group")
-            st.plotly_chart(fig2, use_container_width=True)
     else:
         st.warning("Debes cargar un archivo de líneas genéticas con columna 'linea' para comparar.")
 
