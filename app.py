@@ -115,6 +115,9 @@ elif not isinstance(st.session_state["genetica_edit"], pd.DataFrame):
 if 'escenarios_guardados' not in st.session_state:
     st.session_state['escenarios_guardados'] = []
 
+if 'escenarios_eco' not in st.session_state:
+    st.session_state['escenarios_eco'] = []
+
 if menu == "Formulación de Dieta":
     st.header("Panel de Formulación de Dieta")
     df_ing = st.session_state['ingredientes']
@@ -183,7 +186,6 @@ elif menu == "Simulador Productivo":
         precio_alimento_kg = st.slider("Precio alimento (USD/kg)", 0.20, 1.50, 0.50, 0.01)
     with col3:
         precio_venta_kg = st.slider("Precio venta pollo vivo (USD/kg)", 0.5, 4.0, 2.0, 0.01)
-        # Peso y consumo sugerido por genética
         df_gen = df_lineas[df_lineas['linea'] == linea_sel].copy().reset_index(drop=True)
         peso_sug = float(df_gen[df_gen['edad'] == edad_salida]['peso'].values[0])
         consumo_sug = float(df_gen[df_gen['edad'] == edad_salida]['consumo'].values[0])
@@ -315,7 +317,6 @@ elif menu == "Simulador Productivo":
         fig.update_layout(title="Rentabilidad vs Edad", xaxis_title="Edad (días)", yaxis_title="Rentabilidad (USD)")
         st.plotly_chart(fig, use_container_width=True)
     with tabs[8]:
-        # Gráfico combinado personalizado
         opciones = st.multiselect(
             "Elige las variables a visualizar en el gráfico combinado",
             ["Peso", "Consumo", "FCR", "GDP", "IEP", "Consumo diario", "Producción total", "Rentabilidad"],
@@ -370,25 +371,145 @@ elif menu == "Simulador Productivo":
         st.plotly_chart(fig)
 
 elif menu == "Simulador Económico":
-    st.header("Simulador Económico")
-    costo_ton = st.number_input("Costo dieta por tonelada (USD)", min_value=200., max_value=1000., value=450.)
-    consumo_ave = st.number_input("Consumo por ave (kg)", min_value=1.0, max_value=10.0, value=4.5)
-    peso_ave = st.number_input("Peso final por ave (kg)", min_value=0.5, max_value=7.0, value=2.5)
-    precio_kg = st.number_input("Precio venta por kg vivo (USD)", min_value=0.5, max_value=4.0, value=2.0)
-    costo_ave = consumo_ave * costo_ton / 1000
-    ingreso_ave = peso_ave * precio_kg
-    margen = ingreso_ave - costo_ave
-    st.write(f"Costo por ave: U$D {costo_ave:.2f}")
-    st.write(f"Ingreso por ave: U$D {ingreso_ave:.2f}")
-    st.success(f"Margen neto por ave: U$D {margen:.2f}")
+    st.header("Simulador Económico Interactivo")
+
+    # Interactivos económicos
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        precio_venta = st.slider("Precio venta (USD/kg)", 0.5, 4.0, 2.0, 0.01)
+        peso_final = st.slider("Peso final (kg)", 1.0, 4.0, 2.5, 0.1)
+    with col2:
+        precio_alimento = st.slider("Precio alimento (USD/kg)", 0.2, 1.5, 0.5, 0.01)
+        consumo = st.slider("Consumo acumulado (kg/ave)", 2.0, 7.0, 4.5, 0.1)
+    with col3:
+        aves_ini = st.number_input("Aves iniciales", 1000, 100000, 10000)
+        mortalidad = st.slider("Mortalidad (%)", 0.0, 20.0, 5.0, 0.1)
+        otros_costos = st.slider("Otros costos por ave (USD)", 0.0, 2.0, 0.5, 0.01)
+
+    aves_finales = aves_ini * (1 - mortalidad/100)
+    prod_total = aves_finales * peso_final
+    costo_alim = consumo * aves_ini * precio_alimento
+    costo_total = costo_alim + aves_ini * otros_costos
+    ingreso_bruto = prod_total * precio_venta
+    margen_neto = ingreso_bruto - costo_total
+    margen_ave = margen_neto / aves_finales if aves_finales > 0 else 0
+    rentabilidad = (margen_neto / costo_total)*100 if costo_total>0 else 0
+
+    # KPIs económicos
+    st.markdown("### KPIs económicos")
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Margen neto total (USD)", f"{margen_neto:,.2f}")
+    k2.metric("Margen neto por ave (USD)", f"{margen_ave:.2f}")
+    k3.metric("Rentabilidad (%)", f"{rentabilidad:.2f}")
+    k4.metric("Producción total carne (kg)", f"{prod_total:,.0f}")
+
+    k5, k6, k7 = st.columns(3)
+    k5.metric("Costo total alimento (USD)", f"{costo_alim:,.2f}")
+    k6.metric("Costo total (USD)", f"{costo_total:,.2f}")
+    k7.metric("Ingreso bruto (USD)", f"{ingreso_bruto:,.2f}")
+
+    st.markdown("---")
+    # Tabs de visualización
+    tabs_e = st.tabs(["Margen vs Precio Venta", "Margen vs Precio Alimento", "Margen vs Consumo", "Gráfico Combinado"])
+    precios_venta = np.linspace(0.5, 4.0, 60)
+    margenes_venta = [(prod_total*p - costo_total) for p in precios_venta]
+    precios_alim = np.linspace(0.2, 1.5, 60)
+    margenes_alim = [(prod_total*precio_venta - (consumo*aves_ini*pa + aves_ini*otros_costos)) for pa in precios_alim]
+    consumos = np.linspace(2.0, 7.0, 60)
+    margenes_consumo = [(prod_total*precio_venta - (c*aves_ini*precio_alimento + aves_ini*otros_costos)) for c in consumos]
+    with tabs_e[0]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=precios_venta, y=margenes_venta, mode="lines", name="Margen neto"))
+        fig.add_trace(go.Scatter(x=[precio_venta], y=[margen_neto], mode="markers", marker=dict(size=14, color="red"), name="Simulación actual"))
+        fig.update_layout(title="Margen vs Precio Venta", xaxis_title="Precio venta (USD/kg)", yaxis_title="Margen neto (USD)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs_e[1]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=precios_alim, y=margenes_alim, mode="lines", name="Margen neto"))
+        fig.add_trace(go.Scatter(x=[precio_alimento], y=[margen_neto], mode="markers", marker=dict(size=14, color="red"), name="Simulación actual"))
+        fig.update_layout(title="Margen vs Precio Alimento", xaxis_title="Precio alimento (USD/kg)", yaxis_title="Margen neto (USD)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs_e[2]:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=consumos, y=margenes_consumo, mode="lines", name="Margen neto"))
+        fig.add_trace(go.Scatter(x=[consumo], y=[margen_neto], mode="markers", marker=dict(size=14, color="red"), name="Simulación actual"))
+        fig.update_layout(title="Margen vs Consumo", xaxis_title="Consumo acumulado (kg/ave)", yaxis_title="Margen neto (USD)")
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs_e[3]:
+        opciones_e = st.multiselect(
+            "Elige las variables económicas a visualizar",
+            ["Margen neto", "Producción total", "Costo total", "Ingreso bruto", "Rentabilidad"],
+            default=["Margen neto", "Producción total"]
+        )
+        fig = go.Figure()
+        if "Margen neto" in opciones_e:
+            fig.add_trace(go.Scatter(x=[0,1], y=[margen_neto, margen_neto], mode="lines", name="Margen neto"))
+        if "Producción total" in opciones_e:
+            fig.add_trace(go.Scatter(x=[0,1], y=[prod_total, prod_total], mode="lines", name="Producción total"))
+        if "Costo total" in opciones_e:
+            fig.add_trace(go.Scatter(x=[0,1], y=[costo_total, costo_total], mode="lines", name="Costo total"))
+        if "Ingreso bruto" in opciones_e:
+            fig.add_trace(go.Scatter(x=[0,1], y=[ingreso_bruto, ingreso_bruto], mode="lines", name="Ingreso bruto"))
+        if "Rentabilidad" in opciones_e:
+            fig.add_trace(go.Scatter(x=[0,1], y=[rentabilidad, rentabilidad], mode="lines", name="Rentabilidad (%)"))
+        fig.update_layout(title="Variables seleccionadas (escala dummy)", showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Guardar escenario económico
+    nombre_eco = st.text_input("Nombre del escenario económico", f"Económico {len(st.session_state['escenarios_eco'])+1}")
+    if st.button("Guardar este escenario económico"):
+        st.session_state['escenarios_eco'].append({
+            "nombre": nombre_eco,
+            "precio_venta": precio_venta,
+            "precio_alimento": precio_alimento,
+            "peso_final": peso_final,
+            "consumo": consumo,
+            "aves_ini": aves_ini,
+            "aves_finales": aves_finales,
+            "mortalidad": mortalidad,
+            "prod_total": prod_total,
+            "costo_alim": costo_alim,
+            "costo_total": costo_total,
+            "ingreso_bruto": ingreso_bruto,
+            "margen_neto": margen_neto,
+            "margen_ave": margen_ave,
+            "rentabilidad": rentabilidad,
+            "otros_costos": otros_costos
+        })
+        st.success("¡Escenario económico guardado!")
+
+    # Comparador de escenarios económicos
+    if len(st.session_state['escenarios_eco']) > 0:
+        st.markdown("### Comparador de escenarios económicos guardados")
+        df_eco = pd.DataFrame(st.session_state['escenarios_eco'])
+        st.dataframe(df_eco)
+        var_comp_e = st.selectbox("Selecciona variable a comparar", [
+            "margen_neto","margen_ave","rentabilidad","prod_total","costo_total","ingreso_bruto"
+        ], format_func=lambda x: {
+            "margen_neto":"Margen neto total",
+            "margen_ave":"Margen neto por ave",
+            "rentabilidad":"Rentabilidad (%)",
+            "prod_total":"Producción total",
+            "costo_total":"Costo total",
+            "ingreso_bruto":"Ingreso bruto"
+        }[x])
+        fig = go.Figure()
+        for idx, row in df_eco.iterrows():
+            fig.add_trace(go.Bar(
+                name=row["nombre"],
+                x=[row["nombre"]], y=[row[var_comp_e]]
+            ))
+        fig.update_layout(title=f"Comparativa de {var_comp_e}", barmode="group")
+        st.plotly_chart(fig)
 
 elif menu == "Comparador de Escenarios":
-    st.header("Comparador de Escenarios")
-    # Muestra el comparador también desde aquí
+    st.header("Comparador de Escenarios Productivos y Económicos")
+    # Productivos
     if len(st.session_state['escenarios_guardados']) > 0:
+        st.markdown("#### Productivos")
         df_hist = pd.DataFrame(st.session_state['escenarios_guardados'])
         st.dataframe(df_hist)
-        var_comp = st.selectbox("Selecciona variable a comparar", [
+        var_comp = st.selectbox("Variable a comparar (productivo)", [
             "peso_fin","consumo","fcr","gdp","iep","prod_total","costo_alim","ingreso_bruto","margen_neto","consumo_diario"
         ], format_func=lambda x: {
             "peso_fin":"Peso final",
@@ -401,17 +522,40 @@ elif menu == "Comparador de Escenarios":
             "ingreso_bruto":"Ingreso bruto",
             "margen_neto":"Rentabilidad",
             "consumo_diario":"Consumo diario"
-        }[x])
+        }[x], key="var_comp_prod")
         fig = go.Figure()
         for idx, row in df_hist.iterrows():
             fig.add_trace(go.Bar(
-                name=row["nombre"],
-                x=[row["nombre"]], y=[row[var_comp]]
+                name=row["nombre"], x=[row["nombre"]], y=[row[var_comp]]
             ))
         fig.update_layout(title=f"Comparativa de {var_comp}", barmode="group")
         st.plotly_chart(fig)
     else:
-        st.info("No hay escenarios guardados aún. Guarda escenarios desde el Simulador Productivo para comparar.")
+        st.info("No hay escenarios productivos guardados aún. Guarda escenarios desde el Simulador Productivo para comparar.")
+    # Económicos
+    if len(st.session_state['escenarios_eco']) > 0:
+        st.markdown("#### Económicos")
+        df_eco = pd.DataFrame(st.session_state['escenarios_eco'])
+        st.dataframe(df_eco)
+        var_comp_e = st.selectbox("Variable a comparar (económico)", [
+            "margen_neto","margen_ave","rentabilidad","prod_total","costo_total","ingreso_bruto"
+        ], format_func=lambda x: {
+            "margen_neto":"Margen neto total",
+            "margen_ave":"Margen neto por ave",
+            "rentabilidad":"Rentabilidad (%)",
+            "prod_total":"Producción total",
+            "costo_total":"Costo total",
+            "ingreso_bruto":"Ingreso bruto"
+        }[x], key="var_comp_eco")
+        fig = go.Figure()
+        for idx, row in df_eco.iterrows():
+            fig.add_trace(go.Bar(
+                name=row["nombre"], x=[row["nombre"]], y=[row[var_comp_e]]
+            ))
+        fig.update_layout(title=f"Comparativa de {var_comp_e}", barmode="group")
+        st.plotly_chart(fig)
+    else:
+        st.info("No hay escenarios económicos guardados aún. Guarda escenarios desde el Simulador Económico para comparar.")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(
