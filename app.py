@@ -88,8 +88,7 @@ menu = st.sidebar.radio(
         "Simulador Productivo",
         "Simulador Económico",
         "Comparador de Escenarios",
-        "Modelo Predictivo",
-    ]
+      ]
 )
 
 @st.cache_data
