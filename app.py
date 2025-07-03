@@ -110,59 +110,169 @@ if 'escenarios_guardados' not in st.session_state:
 if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
-# ===================== ANÁLISIS DE DIETA =====================
-if menu == "Análisis de Dieta":
-    st.header("Matriz de Ingredientes Editable")
-    ingredientes_data = {
-        "Ingrediente": ["Maíz", "Sorgo", "Soja", "Harina de carne", "Aceite", "Sal", "Premix"],
-        "Precio ($/kg)": [0.28, 0.22, 0.42, 0.60, 1.00, 0.18, 0.80],
-        "Energía (kcal/kg)": [3350, 3200, 2400, 2100, 8800, 0, 0],
-        "Proteína (%)": [8.5, 9.0, 46.0, 52.0, 0, 0, 0],
-        "Lisina (%)": [0.25, 0.23, 2.85, 3.10, 0, 0, 0.1],
-        "Calcio (%)": [0.02, 0.02, 0.30, 5.50, 0, 0, 1.5],
-    }
-    df_ingredientes = pd.DataFrame(ingredientes_data)
-    df_ingredientes = st.data_editor(df_ingredientes, num_rows="dynamic", key="ingredientes_edit")
+# ----------- DATOS DE EJEMPLO (Reemplaza por tu matriz cuando la tengas) -----------
+ingredientes_base = [
+    {
+        "Ingrediente": "Maíz",
+        "Precio ($/kg)": 0.28,
+        "Energía (kcal/kg)": 3350,
+        "Proteína (%)": 8.5,
+        "Lisina (%)": 0.25,
+        "Calcio (%)": 0.02,
+    },
+    {
+        "Ingrediente": "Soja",
+        "Precio ($/kg)": 0.42,
+        "Energía (kcal/kg)": 2400,
+        "Proteína (%)": 46.0,
+        "Lisina (%)": 2.85,
+        "Calcio (%)": 0.30,
+    },
+    {
+        "Ingrediente": "Harina de carne",
+        "Precio ($/kg)": 0.60,
+        "Energía (kcal/kg)": 2100,
+        "Proteína (%)": 52.0,
+        "Lisina (%)": 3.10,
+        "Calcio (%)": 5.50,
+    },
+    {
+        "Ingrediente": "Aceite",
+        "Precio ($/kg)": 1.00,
+        "Energía (kcal/kg)": 8800,
+        "Proteína (%)": 0.0,
+        "Lisina (%)": 0.0,
+        "Calcio (%)": 0.0,
+    },
+    {
+        "Ingrediente": "Sal",
+        "Precio ($/kg)": 0.18,
+        "Energía (kcal/kg)": 0,
+        "Proteína (%)": 0.0,
+        "Lisina (%)": 0.0,
+        "Calcio (%)": 0.0,
+    },
+    {
+        "Ingrediente": "Premix",
+        "Precio ($/kg)": 0.80,
+        "Energía (kcal/kg)": 0,
+        "Proteína (%)": 0.0,
+        "Lisina (%)": 0.1,
+        "Calcio (%)": 1.5,
+    },
+]
 
-    st.header("Dieta del Cliente (editable)")
-    dieta_data = {
-        "Ingrediente": ["Maíz", "Soja", "Harina de carne", "Premix"],
-        "Proporción (%)": [60, 25, 10, 5]
-    }
-    df_dieta = pd.DataFrame(dieta_data)
-    df_dieta = st.data_editor(df_dieta, num_rows="dynamic", key="dieta_edit")
+# ------------------------------------------
+st.header("Matriz de Ingredientes - Edición Interactiva y Visual")
 
-    st.subheader("Aportes Nutricionales y Costo de la Dieta")
-    df = pd.merge(df_dieta, df_ingredientes, on="Ingrediente", how="left")
-    df["Proporción (kg)"] = df["Proporción (%)"] / 100
-    df["Costo ($/100kg)"] = df["Proporción (kg)"] * df["Precio ($/kg)"] * 100
-    for nutr in ["Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]:
-        df[f"Aporte {nutr}"] = df["Proporción (kg)"] * df[nutr]
+# Inicialización de estado
+if "ingredientes" not in st.session_state:
+    st.session_state["ingredientes"] = ingredientes_base.copy()
 
-    st.write(df[[
-        "Ingrediente", "Proporción (%)", "Precio ($/kg)", "Costo ($/100kg)", 
-        "Aporte Energía (kcal/kg)", "Aporte Proteína (%)", "Aporte Lisina (%)", "Aporte Calcio (%)"
-    ]])
+ingredientes = st.session_state["ingredientes"]
 
-    costo_total = df["Costo ($/100kg)"].sum()
-    energia_total = df["Aporte Energía (kcal/kg)"].sum()
-    proteina_total = df["Aporte Proteína (%)"].sum()
-    lisina_total = df["Aporte Lisina (%)"].sum()
-    calcio_total = df["Aporte Calcio (%)"].sum()
+# Nombres de pestañas
+tab_names = [ing["Ingrediente"] for ing in ingredientes] + ["➕ Nuevo Ingrediente"]
+tabs = st.tabs(tab_names)
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Costo total", f"${costo_total:.2f}/100kg")
-    col2.metric("Energía", f"{energia_total:.0f} kcal/kg")
-    col3.metric("Proteína", f"{proteina_total:.2f} %")
-    col4.metric("Lisina", f"{lisina_total:.2f} %")
-    col5.metric("Calcio", f"{calcio_total:.2f} %")
+# TOOLTIP textos para cada campo
+tooltips = {
+    "Precio ($/kg)": "Costo estimado en dólares por kilogramo del ingrediente.",
+    "Energía (kcal/kg)": "Energía metabolizable aportada por el ingrediente (kcal/kg).",
+    "Proteína (%)": "Porcentaje de proteína bruta sobre materia seca.",
+    "Lisina (%)": "Porcentaje de lisina en base al ingrediente.",
+    "Calcio (%)": "Porcentaje de calcio aportado.",
+}
 
-    st.info("Puede editar en vivo los precios y proporciones arriba para analizar nuevas soluciones en tiempo real.")
+# Mostrar y editar cada ingrediente en su pestaña
+for idx, ing in enumerate(ingredientes):
+    with tabs[idx]:
+        st.subheader(f"🧬 {ing['Ingrediente']}")
+        st.markdown(f"#### Edita los valores para {ing['Ingrediente']}")
+        col1, col2 = st.columns(2)
+        with col1:
+            ing_name = st.text_input("Nombre del ingrediente", value=ing["Ingrediente"], key=f"name_{idx}", help="Nombre único para el ingrediente")
+        ing["Ingrediente"] = ing_name
 
-    st.markdown("""
-    **Notas:**  
-    - Este análisis es una referencia rápida. Para cambios grandes, revise que los requerimientos nutricionales globales se mantengan.
-    """)
+        with col2:
+            if st.button("🗑️ Eliminar ingrediente", key=f"del_{idx}"):
+                st.session_state["ingredientes"].pop(idx)
+                st.experimental_rerun()
+
+        # Mostrar cada campo editable con tooltip
+        for key in ing.keys():
+            if key == "Ingrediente":
+                continue
+            valor = ing[key]
+            helptext = tooltips.get(key, "")
+            disabled = False
+            # Si es Aceite, Sal o Premix y el campo no aplica, lo deshabilitamos
+            if ing_name.lower() in ["aceite", "sal", "premix"] and key in ["Proteína (%)", "Energía (kcal/kg)", "Lisina (%)", "Calcio (%)"]:
+                if (key == "Proteína (%)" and valor == 0) or (key == "Energía (kcal/kg)" and valor == 0) or (key == "Lisina (%)" and valor == 0) or (key == "Calcio (%)" and valor == 0):
+                    disabled = True
+            nuevo_valor = st.number_input(
+                key,
+                min_value=0.0,
+                value=float(valor),
+                step=0.01 if "%" in key else 1.0,
+                key=f"{key}_{idx}",
+                help=helptext,
+                disabled=disabled,
+                format="%.4f" if "%" in key else "%.2f"
+            )
+            ing[key] = nuevo_valor
+
+        # Permitir duplicar ingrediente
+        if st.button("📋 Duplicar este ingrediente", key=f"dup_{idx}"):
+            copia = ing.copy()
+            copia["Ingrediente"] = copia["Ingrediente"] + " (copia)"
+            st.session_state["ingredientes"].append(copia)
+            st.experimental_rerun()
+
+# Pestaña para agregar nuevo ingrediente
+with tabs[-1]:
+    st.subheader("Agregar nuevo ingrediente")
+    nuevo = {}
+    col1, col2 = st.columns(2)
+    with col1:
+        nuevo["Ingrediente"] = st.text_input("Nombre nuevo ingrediente", key="new_ingr", help="Nombre único para el nuevo ingrediente")
+    for col in ingredientes_base[0].keys():
+        if col == "Ingrediente":
+            continue
+        helptext = tooltips.get(col, "")
+        nuevo[col] = st.number_input(f"{col}", min_value=0.0, value=0.0, step=0.01 if "%" in col else 1.0, key=f"new_{col}", help=helptext, format="%.4f" if "%" in col else "%.2f")
+    with col2:
+        if st.button("Agregar", key="add_ing"):
+            nombres_actuales = [i["Ingrediente"] for i in st.session_state["ingredientes"]]
+            if nuevo["Ingrediente"] and nuevo["Ingrediente"] not in nombres_actuales:
+                st.session_state["ingredientes"].append(nuevo)
+                st.success(f"Ingrediente '{nuevo['Ingrediente']}' agregado.")
+                st.experimental_rerun()
+            else:
+                st.warning("El nombre es obligatorio y no debe estar repetido.")
+
+# Buscador de ingredientes
+st.markdown("---")
+buscar = st.text_input("🔎 Buscar ingrediente por nombre", "")
+if buscar:
+    filtrados = [i for i in st.session_state["ingredientes"] if buscar.lower() in i["Ingrediente"].lower()]
+    st.dataframe(pd.DataFrame(filtrados))
+else:
+    st.dataframe(pd.DataFrame(st.session_state["ingredientes"]))
+
+# Botón para descargar la matriz
+st.download_button(
+    "Descargar matriz en Excel",
+    pd.DataFrame(st.session_state["ingredientes"]).to_excel(index=False, engine='openpyxl'),
+    file_name="matriz_ingredientes.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+st.markdown("""
+- Cada ingrediente se edita de forma visual e independiente.
+- Puedes buscar, duplicar, eliminar y agregar ingredientes fácilmente.
+- Descarga la matriz completa con tus ediciones en Excel.
+""")
 
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
