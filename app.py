@@ -1,14 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objs as go
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.preprocessing import StandardScaler
 
-st.set_page_config(page_title="Inteligencia Productiva Avícola", layout="wide")
+st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
 # ----------- ESTILO CORPORATIVO -----------
 st.markdown(
@@ -22,20 +16,13 @@ st.markdown(
         color: #fff !important;
     }
     section.main, section.main * {
-        color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
-    section.main > div:first-child {
-        background: #fff !important;
-        border-radius: 18px !important;
-        box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04) !important;
-        padding: 2.5rem 2rem 2rem 2rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 2rem !important;
-        min-height: 70vh !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stCaption {
+    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader {
         color: #19345c !important;
+    }
+    .stMarkdown, .stText, .stCaption, .stDataFrame, .stTabs, .stTab, .stMetric, .stAlert, .stExpander, .stNumberInput, .stSlider, .stSelectbox {
+        color: #222 !important;
     }
     label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
         color: #19345c !important;
@@ -79,16 +66,15 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-st.title("Módulo de Inteligencia Productiva Avícola")
+st.title("Gestión y Análisis de Dietas")
 
 menu = st.sidebar.radio(
     "Selecciona una sección",
     [
-        "Formulación de Dieta",
+        "Análisis de Dieta",
         "Simulador Productivo",
         "Simulador Económico",
-        "Comparador de Escenarios",
-        "Modelo Predictivo",
+        "Comparador de Escenarios"
     ]
 )
 
@@ -123,70 +109,59 @@ if 'escenarios_guardados' not in st.session_state:
 if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
-# Nutrientes clave para el modelo predictivo
-nutrientes_modelo = [
-    "energia", # Energía metabolizable (kcal/kg)
-    "proteina", # Proteína bruta (%)
-    "lisina", # Lisina digestible (%)
-    "metionina", # Metionina digestible (%)
-    "treonina", # Treonina digestible (%)
-    "triptófano", # Triptófano digestible (%)
-    "calcio", # Calcio (%)
-    "fosforo", # Fósforo disponible (%)
-    "sodio", # Sodio (%)
-    "potasio", # Potasio (%)
-    "cloro", # Cloro (%)
-    "energia_proteina" # Relación energía/proteína (calculada)
-]
+# ===================== ANÁLISIS DE DIETA =====================
+if menu == "Análisis de Dieta":
+    st.header("Matriz de Ingredientes Editable")
+    ingredientes_data = {
+        "Ingrediente": ["Maíz", "Sorgo", "Soja", "Harina de carne", "Aceite", "Sal", "Premix"],
+        "Precio ($/kg)": [0.28, 0.22, 0.42, 0.60, 1.00, 0.18, 0.80],
+        "Energía (kcal/kg)": [3350, 3200, 2400, 2100, 8800, 0, 0],
+        "Proteína (%)": [8.5, 9.0, 46.0, 52.0, 0, 0, 0],
+        "Lisina (%)": [0.25, 0.23, 2.85, 3.10, 0, 0, 0.1],
+        "Calcio (%)": [0.02, 0.02, 0.30, 5.50, 0, 0, 1.5],
+    }
+    df_ingredientes = pd.DataFrame(ingredientes_data)
+    df_ingredientes = st.data_editor(df_ingredientes, num_rows="dynamic", key="ingredientes_edit")
 
-productivos_modelo = [
-    "peso_final",   # Peso vivo final (kg)
-    "fcr",          # Índice de conversión alimenticia
-    "gdp",          # Ganancia diaria de peso (kg/día)
-    "mortalidad",   # Mortalidad (%)
-    "consumo",      # Consumo acumulado (kg/ave)
-    "iep"           # Índice de eficiencia productiva
-]
+    st.header("Dieta del Cliente (editable)")
+    dieta_data = {
+        "Ingrediente": ["Maíz", "Soja", "Harina de carne", "Premix"],
+        "Proporción (%)": [60, 25, 10, 5]
+    }
+    df_dieta = pd.DataFrame(dieta_data)
+    df_dieta = st.data_editor(df_dieta, num_rows="dynamic", key="dieta_edit")
 
-# ---------------------- FORMULACION DE DIETA ----------------------
-if menu == "Formulación de Dieta":
-    st.header("Panel de Formulación de Dieta")
-    df_ing = st.session_state['ingredientes']
-    if df_ing is None:
-        ing = st.file_uploader("Carga ingredientes (csv/xlsx)", type=["csv", "xlsx"])
-        if ing:
-            df_ing = cargar_archivo(ing)
-            st.session_state['ingredientes'] = df_ing
-            st.success("Ingredientes cargados.")
-            st.dataframe(df_ing)
-        else:
-            st.warning("Primero debes cargar los ingredientes.")
-    else:
-        nombre_col = "Ingrediente"
-        precio_col = "precio"
-        nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
-        for nutr in nutrientes:
-            df_ing[nutr] = pd.to_numeric(df_ing[nutr], errors='coerce')
-        seleccionados = st.multiselect("Selecciona ingredientes", df_ing[nombre_col].tolist())
-        proporciones = []
-        for ingr in seleccionados:
-            prop = st.number_input(f"% de {ingr}", min_value=0.0, max_value=100.0, value=10.0)
-            proporciones.append(prop)
-        if seleccionados and sum(proporciones) > 0:
-            df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
-            df_formula["proporcion"] = df_formula["proporcion"] / 100
-            st.dataframe(df_formula)
-            resultado = {}
-            for nutr in nutrientes:
-                valores_nutr = df_ing.set_index(nombre_col)[nutr].reindex(df_formula["ingrediente"]).values
-                resultado[nutr] = (df_formula["proporcion"] * valores_nutr).sum()
-            df_resultado = pd.DataFrame(resultado, index=["Aporte total"])
-            st.subheader("Aportes de nutrientes (por tonelada)")
-            st.dataframe(df_resultado.T, use_container_width=True)
-            if precio_col in df_ing.columns:
-                precios = df_ing.set_index(nombre_col)[precio_col].reindex(df_formula["ingrediente"]).values
-                costo_total = (df_formula["proporcion"] * precios).sum()
-                st.success(f"Costo estimado por tonelada: U$D {costo_total:,.2f}")
+    st.subheader("Aportes Nutricionales y Costo de la Dieta")
+    df = pd.merge(df_dieta, df_ingredientes, on="Ingrediente", how="left")
+    df["Proporción (kg)"] = df["Proporción (%)"] / 100
+    df["Costo ($/100kg)"] = df["Proporción (kg)"] * df["Precio ($/kg)"] * 100
+    for nutr in ["Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]:
+        df[f"Aporte {nutr}"] = df["Proporción (kg)"] * df[nutr]
+
+    st.write(df[[
+        "Ingrediente", "Proporción (%)", "Precio ($/kg)", "Costo ($/100kg)", 
+        "Aporte Energía (kcal/kg)", "Aporte Proteína (%)", "Aporte Lisina (%)", "Aporte Calcio (%)"
+    ]])
+
+    costo_total = df["Costo ($/100kg)"].sum()
+    energia_total = df["Aporte Energía (kcal/kg)"].sum()
+    proteina_total = df["Aporte Proteína (%)"].sum()
+    lisina_total = df["Aporte Lisina (%)"].sum()
+    calcio_total = df["Aporte Calcio (%)"].sum()
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Costo total", f"${costo_total:.2f}/100kg")
+    col2.metric("Energía", f"{energia_total:.0f} kcal/kg")
+    col3.metric("Proteína", f"{proteina_total:.2f} %")
+    col4.metric("Lisina", f"{lisina_total:.2f} %")
+    col5.metric("Calcio", f"{calcio_total:.2f} %")
+
+    st.info("Puede editar en vivo los precios y proporciones arriba para analizar nuevas soluciones en tiempo real.")
+
+    st.markdown("""
+    **Notas:**  
+    - Este análisis es una referencia rápida. Para cambios grandes, revise que los requerimientos nutricionales globales se mantengan.
+    """)
 
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
