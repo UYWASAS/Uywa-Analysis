@@ -170,10 +170,11 @@ if menu == "Análisis de Dieta":
     if "ingredientes" not in st.session_state:
         st.session_state["ingredientes"] = ingredientes_base.copy()
     ingredientes = st.session_state.get("ingredientes", [])
-    # Solo deja los que sean diccionarios y tengan la clave "Ingrediente"
+
+    # SOLO deja los que sean dict y tengan clave "Ingrediente"
     ingredientes = [
         ing for ing in ingredientes
-        if isinstance(ing, dict) and "Ingrediente" in ing
+        if (isinstance(ing, dict) and ("Ingrediente" in ing))
     ]
     if not ingredientes:
         ingredientes = ingredientes_base.copy()
@@ -278,16 +279,22 @@ if menu == "Análisis de Dieta":
     if buscar:
         filtrados = [
             i for i in st.session_state["ingredientes"]
-            if buscar.lower() in i["Ingrediente"].lower()
+            if isinstance(i, dict) and ("Ingrediente" in i) and buscar.lower() in i["Ingrediente"].lower()
         ]
         st.dataframe(pd.DataFrame(filtrados))
     else:
-        st.dataframe(pd.DataFrame(st.session_state["ingredientes"]))
+        st.dataframe(pd.DataFrame([
+            i for i in st.session_state["ingredientes"]
+            if isinstance(i, dict) and ("Ingrediente" in i)
+        ]))
 
     # Botón para descargar la matriz
     st.download_button(
         "Descargar matriz en Excel",
-        pd.DataFrame(st.session_state["ingredientes"]).to_excel(index=False, engine='openpyxl'),
+        pd.DataFrame([
+            i for i in st.session_state["ingredientes"]
+            if isinstance(i, dict) and ("Ingrediente" in i)
+        ]).to_excel(index=False, engine='openpyxl'),
         file_name="matriz_ingredientes.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
