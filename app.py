@@ -16,20 +16,13 @@ st.markdown(
         color: #fff !important;
     }
     section.main, section.main * {
-        color: #19345c !important;
         font-family: 'Montserrat', 'Arial', sans-serif !important;
     }
-    section.main > div:first-child {
-        background: #fff !important;
-        border-radius: 18px !important;
-        box-shadow: 0 6px 32px 0 rgba(32, 64, 128, 0.11), 0 2px 8px 0 rgba(32,64,128,0.04) !important;
-        padding: 2.5rem 2rem 2rem 2rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 2rem !important;
-        min-height: 70vh !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader, .stMarkdown, .stText, .stCaption {
+    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader {
         color: #19345c !important;
+    }
+    .stMarkdown, .stText, .stCaption, .stDataFrame, .stTabs, .stTab, .stMetric, .stAlert, .stExpander, .stNumberInput, .stSlider, .stSelectbox {
+        color: #222 !important;
     }
     label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
         color: #19345c !important;
@@ -170,15 +163,98 @@ if menu == "Análisis de Dieta":
     - Este análisis es una referencia rápida. Para cambios grandes, revise que los requerimientos nutricionales globales se mantengan.
     """)
 
-# ===================== SIMULADOR PRODUCTIVO Y ECONÓMICO =====================
+# ===================== SIMULADOR PRODUCTIVO =====================
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
-    # (Aquí va tu código previo del simulador productivo...)
+    st.write("""
+    Simula el desempeño productivo de tu lote con base en parámetros genéticos y manejo.
+    """)
+    # Parámetros editables
+    st.subheader("Parámetros del Lote")
+    col1, col2, col3 = st.columns(3)
+    linea = col1.selectbox("Línea genética", ["Cobb", "Ross"])
+    edad = col2.selectbox("Edad (días)", [28, 35, 42, 49])
+    num_aves = col3.number_input("Número de aves", min_value=1000, value=10000, step=100)
 
+    # Busca parámetros de referencia
+    ref = datos_geneticos_base[(datos_geneticos_base["linea"] == linea) & (datos_geneticos_base["edad"] == edad)]
+    if not ref.empty:
+        peso_ref = ref["peso"].values[0]
+        consumo_ref = ref["consumo"].values[0]
+        fcr_ref = ref["fcr"].values[0]
+    else:
+        peso_ref = consumo_ref = fcr_ref = np.nan
+
+    st.subheader("Resultados Esperados (Referencia Genética)")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Peso final (kg)", f"{peso_ref:.2f}")
+    col2.metric("Consumo (kg/ave)", f"{consumo_ref:.2f}")
+    col3.metric("FCR", f"{fcr_ref:.2f}")
+
+    st.subheader("Ajusta Parámetros Productivos")
+    peso_real = st.number_input("Peso final real (kg)", min_value=0.5, max_value=5.0, value=float(peso_ref), step=0.01)
+    consumo_real = st.number_input("Consumo real (kg/ave)", min_value=1.0, max_value=10.0, value=float(consumo_ref), step=0.01)
+    fcr_real = st.number_input("FCR real", min_value=1.0, max_value=3.0, value=float(fcr_ref), step=0.01)
+    st.write("Puedes comparar tus propios resultados contra la referencia.")
+
+    st.subheader("Resumen del Lote")
+    st.write(f"- **Línea:** {linea}")
+    st.write(f"- **Edad:** {edad} días")
+    st.write(f"- **N° de aves:** {num_aves:,}")
+    st.write(f"- **Peso final:** {peso_real:.2f} kg/ave")
+    st.write(f"- **Consumo:** {consumo_real:.2f} kg/ave")
+    st.write(f"- **FCR:** {fcr_real:.2f}")
+
+# ===================== SIMULADOR ECONÓMICO =====================
 elif menu == "Simulador Económico":
     st.header("Simulador Económico Interactivo")
-    # (Aquí va tu código previo del simulador económico...)
+    st.write("""
+    Calcula los costos y retornos económicos del lote de aves.
+    """)
+    # Parámetros económicos
+    st.subheader("Parámetros Económicos")
+    costo_pollo = st.number_input("Costo de pollo vivo ($/kg)", min_value=0.5, value=1.2, step=0.01)
+    precio_venta = st.number_input("Precio de venta ($/kg)", min_value=0.5, value=1.8, step=0.01)
+    costo_dieta = st.number_input("Costo de dieta ($/kg)", min_value=0.1, value=0.35, step=0.01)
+    num_aves = st.number_input("N° de aves", min_value=1000, value=10000, step=100)
+    peso_final = st.number_input("Peso final (kg/ave)", min_value=0.5, value=2.5, step=0.01)
+    consumo_ave = st.number_input("Consumo total (kg/ave)", min_value=1.0, value=4.5, step=0.01)
 
+    st.subheader("Resultados Económicos")
+    ingreso = num_aves * peso_final * precio_venta
+    costo_total = num_aves * consumo_ave * costo_dieta
+    margen = ingreso - costo_total
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Ingresos", f"${ingreso:,.2f}")
+    col2.metric("Costo total dieta", f"${costo_total:,.2f}")
+    col3.metric("Margen", f"${margen:,.2f}")
+
+    st.write("Ajusta los parámetros para simular diferentes escenarios económicos.")
+
+# ===================== COMPARADOR DE ESCENARIOS =====================
 elif menu == "Comparador de Escenarios":
     st.header("Comparador de Escenarios Productivos y Económicos")
-    # (Aquí va tu código previo del comparador...)
+    st.write("""
+    Compara dos escenarios de manejo/producto para tomar decisiones.
+    """)
+    st.subheader("Escenario 1")
+    col1, col2 = st.columns(2)
+    peso1 = col1.number_input("Peso final 1 (kg)", value=2.5, key="peso1")
+    costo1 = col2.number_input("Costo dieta 1 ($/ave)", value=1.50, key="costo1")
+    margen1 = peso1 * 1.8 - costo1
+
+    st.subheader("Escenario 2")
+    col1, col2 = st.columns(2)
+    peso2 = col1.number_input("Peso final 2 (kg)", value=2.7, key="peso2")
+    costo2 = col2.number_input("Costo dieta 2 ($/ave)", value=1.65, key="costo2")
+    margen2 = peso2 * 1.8 - costo2
+
+    st.subheader("Comparativo")
+    df_comp = pd.DataFrame({
+        "Escenario": ["Escenario 1", "Escenario 2"],
+        "Peso final (kg)": [peso1, peso2],
+        "Costo dieta ($/ave)": [costo1, costo2],
+        "Margen ($/ave)": [margen1, margen2]
+    })
+    st.dataframe(df_comp, hide_index=True)
+    st.write("Usa este comparador para analizar cambios en peso, costo o precio.")
