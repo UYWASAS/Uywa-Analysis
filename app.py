@@ -148,46 +148,101 @@ productivos_modelo = [
     "iep"           # Índice de eficiencia productiva
 ]
 
-# ---------------------- FORMULACION DE DIETA ----------------------
-if menu == "Formulación de Dieta":
-    st.header("Panel de Formulación de Dieta")
-    df_ing = st.session_state['ingredientes']
-    if df_ing is None:
-        ing = st.file_uploader("Carga ingredientes (csv/xlsx)", type=["csv", "xlsx"])
-        if ing:
-            df_ing = cargar_archivo(ing)
-            st.session_state['ingredientes'] = df_ing
-            st.success("Ingredientes cargados.")
-            st.dataframe(df_ing)
-        else:
-            st.warning("Primero debes cargar los ingredientes.")
-    else:
-        nombre_col = "Ingrediente"
-        precio_col = "precio"
-        nutrientes = [col for col in df_ing.columns if col not in [nombre_col, precio_col]]
-        for nutr in nutrientes:
-            df_ing[nutr] = pd.to_numeric(df_ing[nutr], errors='coerce')
-        seleccionados = st.multiselect("Selecciona ingredientes", df_ing[nombre_col].tolist())
-        proporciones = []
-        for ingr in seleccionados:
-            prop = st.number_input(f"% de {ingr}", min_value=0.0, max_value=100.0, value=10.0)
-            proporciones.append(prop)
-        if seleccionados and sum(proporciones) > 0:
-            df_formula = pd.DataFrame({"ingrediente": seleccionados, "proporcion": proporciones})
-            df_formula["proporcion"] = df_formula["proporcion"] / 100
-            st.dataframe(df_formula)
-            resultado = {}
-            for nutr in nutrientes:
-                valores_nutr = df_ing.set_index(nombre_col)[nutr].reindex(df_formula["ingrediente"]).values
-                resultado[nutr] = (df_formula["proporcion"] * valores_nutr).sum()
-            df_resultado = pd.DataFrame(resultado, index=["Aporte total"])
-            st.subheader("Aportes de nutrientes (por tonelada)")
-            st.dataframe(df_resultado.T, use_container_width=True)
-            if precio_col in df_ing.columns:
-                precios = df_ing.set_index(nombre_col)[precio_col].reindex(df_formula["ingrediente"]).values
-                costo_total = (df_formula["proporcion"] * precios).sum()
-                st.success(f"Costo estimado por tonelada: U$D {costo_total:,.2f}")
+st.set_page_config(page_title="Gestión y Optimización de Dietas", layout="wide")
 
+st.title("Gestión y Optimización de Dietas: Análisis Económico en Vivo")
+
+# --------- APARTADO DE FÓRMULA Y OPTIMIZACIÓN ---------
+st.header("Matriz de Ingredientes Editable")
+ingredientes_data = {
+    "Ingrediente": ["Maíz", "Sorgo", "Soja", "Harina de carne", "Aceite", "Sal", "Premix"],
+    "Precio ($/kg)": [0.28, 0.22, 0.42, 0.60, 1.00, 0.18, 0.80],
+    "Energía (kcal/kg)": [3350, 3200, 2400, 2100, 8800, 0, 0],
+    "Proteína (%)": [8.5, 9.0, 46.0, 52.0, 0, 0, 0],
+    "Lisina (%)": [0.25, 0.23, 2.85, 3.10, 0, 0, 0.1],
+    "Calcio (%)": [0.02, 0.02, 0.30, 5.50, 0, 0, 1.5],
+}
+df_ingredientes = pd.DataFrame(ingredientes_data)
+df_ingredientes = st.data_editor(df_ingredientes, num_rows="dynamic", key="ingredientes_edit")
+
+st.header("Dieta del Cliente (editable)")
+dieta_data = {
+    "Ingrediente": ["Maíz", "Soja", "Harina de carne", "Premix"],
+    "Proporción (%)": [60, 25, 10, 5]
+}
+df_dieta = pd.DataFrame(dieta_data)
+df_dieta = st.data_editor(df_dieta, num_rows="dynamic", key="dieta_edit")
+
+st.subheader("Aportes Nutricionales y Costo de la Dieta")
+df = pd.merge(df_dieta, df_ingredientes, on="Ingrediente", how="left")
+df["Proporción (kg)"] = df["Proporción (%)"] / 100
+df["Costo ($/100kg)"] = df["Proporción (kg)"] * df["Precio ($/kg)"] * 100
+for nutr in ["Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]:
+    df[f"Aporte {nutr}"] = df["Proporción (kg)"] * df[nutr]
+
+st.write(df[[
+    "Ingrediente", "Proporción (%)", "Precio ($/kg)", "Costo ($/100kg)", 
+    "Aporte Energía (kcal/kg)", "Aporte Proteína (%)", "Aporte Lisina (%)", "Aporte Calcio (%)"
+]])
+
+costo_total = df["Costo ($/100kg)"].sum()
+energia_total = df["Aporte Energía (kcal/kg)"].sum()
+proteina_total = df["Aporte Proteína (%)"].sum()
+lisina_total = df["Aporte Lisina (%)"].sum()
+calcio_total = df["Aporte Calcio (%)"].sum()
+
+col1, col2, col3, col4, col5 = st.columns(5)
+col1.metric("Costo total", f"${costo_total:.2f}/100kg")
+col2.metric("Energía", f"{energia_total:.0f} kcal/kg")
+col3.metric("Proteína", f"{proteina_total:.2f} %")
+col4.metric("Lisina", f"{lisina_total:.2f} %")
+col5.metric("Calcio", f"{calcio_total:.2f} %")
+
+# --------- ANÁLISIS DE COSTOS Y SUGERENCIAS ---------
+st.subheader("Ingredientes y Nutrientes Más Costosos")
+df_costos = df[["Ingrediente", "Costo ($/100kg)"]].sort_values("Costo ($/100kg)", ascending=False)
+st.write("**Ranking de ingredientes más costosos en la dieta actual:**")
+st.dataframe(df_costos, hide_index=True)
+
+nutrientes = ["Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]
+df_nutr_cost = []
+for nutr in nutrientes:
+    total_nutr = df[f"Aporte {nutr}"].sum()
+    if total_nutr > 0:
+        costo_x_nutr = (df["Costo ($/100kg)"] * df[f"Aporte {nutr}"] / total_nutr).sum()
+    else:
+        costo_x_nutr = 0
+    df_nutr_cost.append({"Nutriente": nutr, "Costo estimado ($/100kg)": costo_x_nutr})
+
+st.write("**Costo estimado por nutriente en la dieta:**")
+st.dataframe(pd.DataFrame(df_nutr_cost), hide_index=True)
+
+# --------- SUGERENCIAS DE OPTIMIZACIÓN ---------
+st.subheader("Sugerencias de Optimización Económica (in vivo)")
+nutriente_top = max(df_nutr_cost, key=lambda x: x["Costo estimado ($/100kg)"])["Nutriente"]
+ingred_caro = df.loc[df[f"Aporte {nutriente_top}"].idxmax(), "Ingrediente"]
+aporte_caro = df_ingredientes.loc[df_ingredientes["Ingrediente"] == ingred_caro, nutriente_top].values[0]
+precio_caro = df_ingredientes.loc[df_ingredientes["Ingrediente"] == ingred_caro, "Precio ($/kg)"].values[0]
+alternativas = df_ingredientes[
+    (df_ingredientes[nutriente_top] >= 0.8 * aporte_caro) &
+    (df_ingredientes["Precio ($/kg)"] < precio_caro) &
+    (df_ingredientes["Ingrediente"] != ingred_caro)
+]
+if not alternativas.empty:
+    st.markdown(f"El ingrediente **{ingred_caro}** es el mayor aportador de **{nutriente_top}** y el más costoso en ese nutriente.")
+    st.write("Alternativas más económicas en la matriz:")
+    st.dataframe(alternativas[["Ingrediente", "Precio ($/kg)", nutriente_top]], hide_index=True)
+    st.markdown("**Sugerencia:** Considere reemplazar parte de este ingrediente por uno de los alternativos para reducir el costo manteniendo el aporte nutricional.")
+else:
+    st.warning("No se encontraron alternativas más económicas en la matriz para el nutriente más costoso.")
+
+st.info("Puede editar en vivo los precios y proporciones arriba para analizar nuevas soluciones en tiempo real.")
+
+st.markdown("""
+**Notas:**  
+- Este análisis es una referencia rápida. Para cambios grandes, revise que los requerimientos nutricionales globales se mantengan.
+- Puede expandirse para sugerir mezclas proporcionales, alertar por desbalance de otros nutrientes, o integrar restricciones máximas/mínimas.
+""")
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
