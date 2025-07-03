@@ -114,7 +114,7 @@ if 'escenarios_eco' not in st.session_state:
 if menu == "Análisis de Dieta":
     st.header("Matriz de Ingredientes - Edición Interactiva y Visual")
 
-    # ----------- DATOS DE EJEMPLO -----------
+    # ----------- DATOS DE EJEMPLO (Reemplaza por tu matriz cuando la tengas) -----------
     ingredientes_base = [
         {
             "Ingrediente": "Maíz",
@@ -166,17 +166,24 @@ if menu == "Análisis de Dieta":
         },
     ]
 
-    # Inicialización de estado
+    # Inicialización y limpieza robusta del estado
     if "ingredientes" not in st.session_state:
         st.session_state["ingredientes"] = ingredientes_base.copy()
-
-    ingredientes = st.session_state["ingredientes"]
+    ingredientes = st.session_state.get("ingredientes", [])
+    # Solo deja los que sean diccionarios y tengan la clave "Ingrediente"
+    ingredientes = [
+        ing for ing in ingredientes
+        if isinstance(ing, dict) and "Ingrediente" in ing
+    ]
+    if not ingredientes:
+        ingredientes = ingredientes_base.copy()
+        st.session_state["ingredientes"] = ingredientes
 
     # Nombres de pestañas
     tab_names = [ing["Ingrediente"] for ing in ingredientes] + ["➕ Nuevo Ingrediente"]
     tabs = st.tabs(tab_names)
 
-    # TOOLTIP textos para cada campo
+    # Tooltip textos para cada campo
     tooltips = {
         "Precio ($/kg)": "Costo estimado en dólares por kilogramo del ingrediente.",
         "Energía (kcal/kg)": "Energía metabolizable aportada por el ingrediente (kcal/kg).",
@@ -192,8 +199,13 @@ if menu == "Análisis de Dieta":
             st.markdown(f"#### Edita los valores para {ing['Ingrediente']}")
             col1, col2 = st.columns(2)
             with col1:
-                ing_name = st.text_input("Nombre del ingrediente", value=ing["Ingrediente"], key=f"name_{idx}", help="Nombre único para el ingrediente")
-            ing["Ingrediente"] = ing_name
+                ing_name = st.text_input(
+                    "Nombre del ingrediente",
+                    value=ing["Ingrediente"],
+                    key=f"name_{idx}",
+                    help="Nombre único para el ingrediente"
+                )
+                ing["Ingrediente"] = ing_name
 
             with col2:
                 if st.button("🗑️ Eliminar ingrediente", key=f"del_{idx}"):
@@ -241,7 +253,15 @@ if menu == "Análisis de Dieta":
             if col == "Ingrediente":
                 continue
             helptext = tooltips.get(col, "")
-            nuevo[col] = st.number_input(f"{col}", min_value=0.0, value=0.0, step=0.01 if "%" in col else 1.0, key=f"new_{col}", help=helptext, format="%.4f" if "%" in col else "%.2f")
+            nuevo[col] = st.number_input(
+                f"{col}",
+                min_value=0.0,
+                value=0.0,
+                step=0.01 if "%" in col else 1.0,
+                key=f"new_{col}",
+                help=helptext,
+                format="%.4f" if "%" in col else "%.2f"
+            )
         with col2:
             if st.button("Agregar", key="add_ing"):
                 nombres_actuales = [i["Ingrediente"] for i in st.session_state["ingredientes"]]
@@ -256,7 +276,10 @@ if menu == "Análisis de Dieta":
     st.markdown("---")
     buscar = st.text_input("🔎 Buscar ingrediente por nombre", "")
     if buscar:
-        filtrados = [i for i in st.session_state["ingredientes"] if buscar.lower() in i["Ingrediente"].lower()]
+        filtrados = [
+            i for i in st.session_state["ingredientes"]
+            if buscar.lower() in i["Ingrediente"].lower()
+        ]
         st.dataframe(pd.DataFrame(filtrados))
     else:
         st.dataframe(pd.DataFrame(st.session_state["ingredientes"]))
