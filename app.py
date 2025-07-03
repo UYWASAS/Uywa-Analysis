@@ -114,77 +114,32 @@ if 'escenarios_eco' not in st.session_state:
 if menu == "Análisis de Dieta":
     st.header("Matriz de Ingredientes - Edición Interactiva y Visual")
 
-    # ----------- DATOS DE EJEMPLO (Reemplaza por tu matriz cuando la tengas) -----------
     ingredientes_base = [
-        {
-            "Ingrediente": "Maíz",
-            "Precio ($/kg)": 0.28,
-            "Energía (kcal/kg)": 3350,
-            "Proteína (%)": 8.5,
-            "Lisina (%)": 0.25,
-            "Calcio (%)": 0.02,
-        },
-        {
-            "Ingrediente": "Soja",
-            "Precio ($/kg)": 0.42,
-            "Energía (kcal/kg)": 2400,
-            "Proteína (%)": 46.0,
-            "Lisina (%)": 2.85,
-            "Calcio (%)": 0.30,
-        },
-        {
-            "Ingrediente": "Harina de carne",
-            "Precio ($/kg)": 0.60,
-            "Energía (kcal/kg)": 2100,
-            "Proteína (%)": 52.0,
-            "Lisina (%)": 3.10,
-            "Calcio (%)": 5.50,
-        },
-        {
-            "Ingrediente": "Aceite",
-            "Precio ($/kg)": 1.00,
-            "Energía (kcal/kg)": 8800,
-            "Proteína (%)": 0.0,
-            "Lisina (%)": 0.0,
-            "Calcio (%)": 0.0,
-        },
-        {
-            "Ingrediente": "Sal",
-            "Precio ($/kg)": 0.18,
-            "Energía (kcal/kg)": 0,
-            "Proteína (%)": 0.0,
-            "Lisina (%)": 0.0,
-            "Calcio (%)": 0.0,
-        },
-        {
-            "Ingrediente": "Premix",
-            "Precio ($/kg)": 0.80,
-            "Energía (kcal/kg)": 0,
-            "Proteína (%)": 0.0,
-            "Lisina (%)": 0.1,
-            "Calcio (%)": 1.5,
-        },
+        {"Ingrediente": "Maíz", "Precio ($/kg)": 0.28, "Energía (kcal/kg)": 3350, "Proteína (%)": 8.5, "Lisina (%)": 0.25, "Calcio (%)": 0.02},
+        {"Ingrediente": "Soja", "Precio ($/kg)": 0.42, "Energía (kcal/kg)": 2400, "Proteína (%)": 46.0, "Lisina (%)": 2.85, "Calcio (%)": 0.30},
+        {"Ingrediente": "Harina de carne", "Precio ($/kg)": 0.60, "Energía (kcal/kg)": 2100, "Proteína (%)": 52.0, "Lisina (%)": 3.10, "Calcio (%)": 5.50},
+        {"Ingrediente": "Aceite", "Precio ($/kg)": 1.00, "Energía (kcal/kg)": 8800, "Proteína (%)": 0.0, "Lisina (%)": 0.0, "Calcio (%)": 0.0},
+        {"Ingrediente": "Sal", "Precio ($/kg)": 0.18, "Energía (kcal/kg)": 0, "Proteína (%)": 0.0, "Lisina (%)": 0.0, "Calcio (%)": 0.0},
+        {"Ingrediente": "Premix", "Precio ($/kg)": 0.80, "Energía (kcal/kg)": 0, "Proteína (%)": 0.0, "Lisina (%)": 0.1, "Calcio (%)": 1.5},
     ]
 
-    # Inicialización y limpieza robusta del estado
-    if "ingredientes" not in st.session_state:
+    # Inicialización robusta y limpieza del estado
+    if "ingredientes" not in st.session_state or not isinstance(st.session_state["ingredientes"], list):
         st.session_state["ingredientes"] = ingredientes_base.copy()
-    ingredientes = st.session_state.get("ingredientes", [])
 
-    # SOLO deja los que sean dict y tengan clave "Ingrediente"
-    ingredientes = [
-        ing for ing in ingredientes
-        if (isinstance(ing, dict) and ("Ingrediente" in ing))
-    ]
-    if not ingredientes:
-        ingredientes = ingredientes_base.copy()
-        st.session_state["ingredientes"] = ingredientes
+    # Limpiar ingredientes: solo dicts válidos
+    ingredientes_limpios = []
+    for ing in st.session_state["ingredientes"]:
+        if isinstance(ing, dict) and "Ingrediente" in ing:
+            ingredientes_limpios.append(ing)
+    if not ingredientes_limpios:
+        ingredientes_limpios = ingredientes_base.copy()
+    st.session_state["ingredientes"] = ingredientes_limpios
+    ingredientes = st.session_state["ingredientes"]
 
-    # Nombres de pestañas
     tab_names = [ing["Ingrediente"] for ing in ingredientes] + ["➕ Nuevo Ingrediente"]
     tabs = st.tabs(tab_names)
 
-    # Tooltip textos para cada campo
     tooltips = {
         "Precio ($/kg)": "Costo estimado en dólares por kilogramo del ingrediente.",
         "Energía (kcal/kg)": "Energía metabolizable aportada por el ingrediente (kcal/kg).",
@@ -193,7 +148,6 @@ if menu == "Análisis de Dieta":
         "Calcio (%)": "Porcentaje de calcio aportado.",
     }
 
-    # Mostrar y editar cada ingrediente en su pestaña
     for idx, ing in enumerate(ingredientes):
         with tabs[idx]:
             st.subheader(f"🧬 {ing['Ingrediente']}")
@@ -213,14 +167,12 @@ if menu == "Análisis de Dieta":
                     st.session_state["ingredientes"].pop(idx)
                     st.experimental_rerun()
 
-            # Mostrar cada campo editable con tooltip
             for key in ing.keys():
                 if key == "Ingrediente":
                     continue
                 valor = ing[key]
                 helptext = tooltips.get(key, "")
                 disabled = False
-                # Si es Aceite, Sal o Premix y el campo no aplica, lo deshabilitamos
                 if ing_name.lower() in ["aceite", "sal", "premix"] and key in ["Proteína (%)", "Energía (kcal/kg)", "Lisina (%)", "Calcio (%)"]:
                     if (key == "Proteína (%)" and valor == 0) or (key == "Energía (kcal/kg)" and valor == 0) or (key == "Lisina (%)" and valor == 0) or (key == "Calcio (%)" and valor == 0):
                         disabled = True
@@ -236,7 +188,6 @@ if menu == "Análisis de Dieta":
                 )
                 ing[key] = nuevo_valor
 
-            # Permitir duplicar ingrediente
             if st.button("📋 Duplicar este ingrediente", key=f"dup_{idx}"):
                 copia = ing.copy()
                 copia["Ingrediente"] = copia["Ingrediente"] + " (copia)"
@@ -273,7 +224,6 @@ if menu == "Análisis de Dieta":
                 else:
                     st.warning("El nombre es obligatorio y no debe estar repetido.")
 
-    # Buscador de ingredientes
     st.markdown("---")
     buscar = st.text_input("🔎 Buscar ingrediente por nombre", "")
     if buscar:
@@ -288,7 +238,6 @@ if menu == "Análisis de Dieta":
             if isinstance(i, dict) and ("Ingrediente" in i)
         ]))
 
-    # Botón para descargar la matriz
     st.download_button(
         "Descargar matriz en Excel",
         pd.DataFrame([
