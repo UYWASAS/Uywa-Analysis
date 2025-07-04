@@ -116,16 +116,14 @@ if menu == "Análisis de Dieta":
         # ------------------- SELECCIÓN DE NUTRIENTES DINÁMICA -----------------
         posibles_cols = df_ing.columns.tolist()
         columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
-        # Detecta columnas numéricas (nutrientes) excluyendo las fijas
-        columnas_nut = [
-            col for col in posibles_cols
-            if col not in columnas_fijas and pd.api.types.is_numeric_dtype(df_ing[col])
-        ]
-        nutrientes_seleccionados = st.multiselect(
-            "Selecciona nutrientes a analizar",
-            columnas_nut,
-            default=columnas_nut[:4] if len(columnas_nut) >= 4 else columnas_nut
-        )
+       # Selección robusta de nutrientes (todas menos las fijas)
+columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
+columnas_nut = [col for col in df_ing.columns if col not in columnas_fijas]
+nutrientes_seleccionados = st.multiselect(
+    "Selecciona nutrientes a analizar",
+    columnas_nut,
+    default=columnas_nut[:4] if len(columnas_nut) >= 4 else columnas_nut
+)
 
         # ------------------- EDICIÓN DE INCLUSIÓN Y PRECIO --------------------
         data_formula = []
