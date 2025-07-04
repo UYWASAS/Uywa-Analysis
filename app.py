@@ -217,36 +217,12 @@ if menu == "Análisis de Dieta":
             for idx, ing in enumerate(ingredientes_seleccionados):
                 color_map[ing] = color_palette[idx % len(color_palette)]
 
-            tab2, tab1, tab3 = st.tabs([
-                "Costo Total por Ingrediente",
+            # ORDEN: Aporte, Costo total, Costo por unidad
+            tab1, tab2, tab3 = st.tabs([
                 "Aporte por Ingrediente a Nutrientes",
+                "Costo Total por Ingrediente",
                 "Costo por Unidad de Nutriente"
             ])
-
-            with tab2:
-                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta, proporcional)")
-                costos = [
-                    (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
-                    for idx, row in df_formula.iterrows()
-                ]
-                total_costo = sum(costos)
-                proporciones = [(c / total_costo * 100) if total_costo > 0 else 0 for c in costos]
-                fig2 = go.Figure([go.Bar(
-                    x=ingredientes_seleccionados,
-                    y=costos,
-                    marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
-                    text=[f"{c:.2f} USD<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
-                    textposition='auto'
-                )])
-                fig2.update_layout(
-                    xaxis_title="Ingrediente",
-                    yaxis_title="Costo aportado (USD/kg de dieta)",
-                    title="Costo total aportado por ingrediente",
-                    showlegend=False
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.2f} USD/kg")
-                st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
 
             with tab1:
                 st.markdown("#### Aporte de cada ingrediente a cada nutriente (barras por nutriente)")
@@ -274,6 +250,31 @@ if menu == "Análisis de Dieta":
                         )
                         st.plotly_chart(fig, use_container_width=True)
 
+            with tab2:
+                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta, proporcional)")
+                costos = [
+                    (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                    for idx, row in df_formula.iterrows()
+                ]
+                total_costo = sum(costos)
+                proporciones = [(c / total_costo * 100) if total_costo > 0 else 0 for c in costos]
+                fig2 = go.Figure([go.Bar(
+                    x=ingredientes_seleccionados,
+                    y=costos,
+                    marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
+                    text=[f"{c:.2f} USD<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
+                    textposition='auto'
+                )])
+                fig2.update_layout(
+                    xaxis_title="Ingrediente",
+                    yaxis_title="Costo aportado (USD/kg de dieta)",
+                    title="Costo total aportado por ingrediente",
+                    showlegend=False
+                )
+                st.plotly_chart(fig2, use_container_width=True)
+                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.2f} USD/kg")
+                st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
+
             with tab3:
                 st.markdown("#### Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
                 nut_tabs = st.tabs([nut for nut in nutrientes_seleccionados])
@@ -286,13 +287,15 @@ if menu == "Análisis de Dieta":
                             costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                             costo_unitario = (costo / aporte) if aporte > 0 else np.nan
                             costos_unit.append(costo_unitario)
-                        fig3 = go.Figure([go.Bar(
+                        # El error era por crear un solo go.Figure con múltiples barras, aquí una barra por ingrediente, todos juntos:
+                        fig3 = go.Figure()
+                        fig3.add_trace(go.Bar(
                             x=ingredientes_seleccionados,
                             y=costos_unit,
                             marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
                             text=[f"{c:.2f}" if not np.isnan(c) else "-" for c in costos_unit],
                             textposition='auto'
-                        )])
+                        ))
                         fig3.update_layout(
                             xaxis_title="Ingrediente",
                             yaxis_title=f"Costo por unidad de {nut}",
@@ -309,6 +312,42 @@ if menu == "Análisis de Dieta":
         else:
             st.info("Selecciona ingredientes y nutrientes para comenzar el análisis y visualización.")
 
+# ============= SIMULADOR PRODUCTIVO =============
+elif menu == "Simulador Productivo":
+    st.header("Simulador Productivo")
+    st.subheader("Configuración genética y parámetros productivos")
+    df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
+    edit_df = st.data_editor(
+        df_gen,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="df_genetica_editor"
+    )
+    if st.button("Guardar cambios de genética"):
+        st.session_state["genetica_edit"] = edit_df.copy()
+        st.success("¡Datos de genética actualizados!")
+
+    st.markdown("""
+    <ul>
+    <li>Modifica los parámetros de línea, edad, peso, consumo y FCR según tus necesidades productivas.</li>
+    <li>Haz clic en <b>Guardar cambios de genética</b> para actualizar la configuración que se utilizará en los demás cálculos y simulaciones.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+
+    st.write("Vista previa de la configuración genética actual:")
+    st.dataframe(st.session_state["genetica_edit"])
+
+# ============= SIMULADOR ECONÓMICO =============
+elif menu == "Simulador Económico":
+    st.info("Aquí irá el Simulador Económico... (sección en desarrollo)")
+
+# ============= COMPARADOR DE ESCENARIOS =============
+elif menu == "Comparador de Escenarios":
+    st.header("Comparador de Escenarios")
+    df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
+    st.subheader("Comparativa de genética/productividad")
+    st.dataframe(df_gen)
+    st.info("Aquí podrás comparar escenarios productivos y económicos entre distintas genéticas y configuraciones. (En desarrollo)")
 # ============= SIMULADOR PRODUCTIVO =============
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo")
