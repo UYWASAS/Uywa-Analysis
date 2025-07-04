@@ -7,6 +7,31 @@ import plotly.express as px
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
+# --- FONDO CORPORATIVO ---
+st.markdown("""
+    <style>
+    html, body, .stApp, .main, .block-container {
+        background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
+        background-color: #f3f6fa !important;
+    }
+    section[data-testid="stSidebar"] {
+        background: #19345c !important;
+    }
+    .block-container {
+        background: transparent !important;
+    }
+    section.main {
+        background: transparent !important;
+    }
+    .stFileUploader, .stMultiSelect, .stSelectbox, .stNumberInput, .stTextInput {
+        background-color: #f4f8fa !important;
+        border-radius: 6px !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # ---------- SIDEBAR EMPRESARIAL ----------
 with st.sidebar:
     st.image("nombre_archivo_logo.png", width=110)
