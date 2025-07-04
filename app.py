@@ -213,9 +213,9 @@ if menu == "Análisis de Dieta":
 
             # PALETA DE COLORES CONSISTENTE PARA CADA INGREDIENTE
             color_palette = px.colors.qualitative.Plotly
-            color_map = {}
-            for idx, ing in enumerate(ingredientes_seleccionados):
-                color_map[ing] = color_palette[idx % len(color_palette)]
+            # Asegura el mismo orden de colores siempre para los mismos ingredientes
+            ingredientes_ordenados = ingredientes_lista
+            color_map = {ing: color_palette[idx % len(color_palette)] for idx, ing in enumerate(ingredientes_ordenados)}
 
             # ORDEN: Aporte, Costo total, Costo por unidad
             tab1, tab2, tab3 = st.tabs([
@@ -224,32 +224,7 @@ if menu == "Análisis de Dieta":
                 "Costo por Unidad de Nutriente"
             ])
 
-               with tab1:
-                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta, proporcional)")
-                costos = [
-                    (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
-                    for idx, row in df_formula.iterrows()
-                ]
-                total_costo = sum(costos)
-                proporciones = [(c / total_costo * 100) if total_costo > 0 else 0 for c in costos]
-                fig2 = go.Figure([go.Bar(
-                    x=ingredientes_seleccionados,
-                    y=costos,
-                    marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
-                    text=[f"{c:.2f} USD<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
-                    textposition='auto'
-                )])
-                fig2.update_layout(
-                    xaxis_title="Ingrediente",
-                    yaxis_title="Costo aportado (USD/kg de dieta)",
-                    title="Costo total aportado por ingrediente",
-                    showlegend=False
-                )
-                st.plotly_chart(fig2, use_container_width=True)
-                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.2f} USD/kg")
-                st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
-
-            with tab2:
+            with tab1:
                 st.markdown("#### Aporte de cada ingrediente a cada nutriente (barras por nutriente)")
                 nut_tabs = st.tabs([nut for nut in nutrientes_seleccionados])
                 for i, nut in enumerate(nutrientes_seleccionados):
@@ -274,20 +249,46 @@ if menu == "Análisis de Dieta":
                             title=f"Aporte de cada ingrediente a {nut}"
                         )
                         st.plotly_chart(fig, use_container_width=True)
-         
+
+            with tab2:
+                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta, proporcional)")
+                costos = [
+                    (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                    for idx, row in df_formula.iterrows()
+                ]
+                total_costo = sum(costos)
+                proporciones = [(c / total_costo * 100) if total_costo > 0 else 0 for c in costos]
+                fig2 = go.Figure([go.Bar(
+                    x=ingredientes_seleccionados,
+                    y=costos,
+                    marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
+                    text=[f"{c:.2f} USD<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
+                    textposition='auto'
+                )])
+                fig2.update_layout(
+                    xaxis_title="Ingrediente",
+                    yaxis_title="Costo aportado (USD/kg de dieta)",
+                    title="Costo total aportado por ingrediente",
+                    showlegend=False
+                )
+                st.plotly_chart(fig2, use_container_width=True)
+                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.2f} USD/kg")
+                st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
+
             with tab3:
                 st.markdown("#### Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
                 nut_tabs = st.tabs([nut for nut in nutrientes_seleccionados])
                 for i, nut in enumerate(nutrientes_seleccionados):
                     with nut_tabs[i]:
                         costos_unit = []
-                        for idx, row in df_formula.iterrows():
+                        # Usa el mismo color_map y orden de ingredientes para asegurar colores consistentes
+                        for ing in ingredientes_seleccionados:
+                            row = df_formula[df_formula["Ingrediente"] == ing].iloc[0]
                             aporte = pd.to_numeric(row[nut], errors="coerce")
                             aporte = (aporte * row["% Inclusión"]) / 100 if pd.notnull(aporte) else 0
                             costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                             costo_unitario = (costo / aporte) if aporte > 0 else np.nan
                             costos_unit.append(costo_unitario)
-                        # El error era por crear un solo go.Figure con múltiples barras, aquí una barra por ingrediente, todos juntos:
                         fig3 = go.Figure()
                         fig3.add_trace(go.Bar(
                             x=ingredientes_seleccionados,
