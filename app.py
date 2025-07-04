@@ -111,6 +111,8 @@ if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
 # ===================== ANÁLISIS DE DIETA =====================
+import io
+
 if menu == "Análisis de Dieta":
     st.header("Matriz de Ingredientes - Edición Interactiva y Visual")
 
@@ -238,12 +240,18 @@ if menu == "Análisis de Dieta":
             if isinstance(i, dict) and ("Ingrediente" in i)
         ]))
 
+    # Descarga robusta a Excel con BytesIO
+    df_export = pd.DataFrame([
+        i for i in st.session_state["ingredientes"]
+        if isinstance(i, dict) and ("Ingrediente" in i)
+    ])
+    excel_buffer = io.BytesIO()
+    df_export.to_excel(excel_buffer, index=False, engine='openpyxl')
+    excel_buffer.seek(0)
+
     st.download_button(
         "Descargar matriz en Excel",
-        pd.DataFrame([
-            i for i in st.session_state["ingredientes"]
-            if isinstance(i, dict) and ("Ingrediente" in i)
-        ]).to_excel(index=False, engine='openpyxl'),
+        data=excel_buffer,
         file_name="matriz_ingredientes.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
