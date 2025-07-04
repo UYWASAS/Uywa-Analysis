@@ -113,10 +113,6 @@ if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
 # ===================== ANÁLISIS DE DIETA =====================
-import streamlit as st
-import pandas as pd
-import numpy as np
-
 # 1. Cargar matriz de ingredientes
 @st.cache_data
 def cargar_ingredientes():
