@@ -113,6 +113,10 @@ if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
 # ===================== ANÁLISIS DE DIETA =====================
+import streamlit as st
+import pandas as pd
+import numpy as np
+
 # 1. Cargar matriz de ingredientes
 @st.cache_data
 def cargar_ingredientes():
@@ -194,6 +198,7 @@ st.markdown("""
 - Ajusta el % de inclusión de cada uno.
 - Visualiza la composición y el costo de tu dieta al instante.
 """)
+
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
