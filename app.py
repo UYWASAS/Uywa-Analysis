@@ -209,32 +209,34 @@ if menu == "Análisis de Dieta":
                         st.plotly_chart(fig, use_container_width=True)
 
             with tab2:
-                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta, proporcional)")
+                st.markdown("#### Costo total aportado por cada ingrediente (USD/tonelada de dieta, proporcional)")
                 costos = [
                     (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                     for idx, row in df_formula.iterrows()
                 ]
-                total_costo = sum(costos)
-                proporciones = [(c / total_costo * 100) if total_costo > 0 else 0 for c in costos]
+                # Multiplicamos por 1000 para mostrar en tonelada
+                costos_ton = [c * 1000 for c in costos]
+                total_costo_ton = sum(costos_ton)
+                proporciones = [(c / total_costo_ton * 100) if total_costo_ton > 0 else 0 for c in costos_ton]
                 fig2 = go.Figure([go.Bar(
                     x=ingredientes_seleccionados,
-                    y=costos,
+                    y=costos_ton,
                     marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
-                    text=[f"{c:.4f} USD/kg<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
+                    text=[f"{c:.2f} USD/ton<br>{p:.1f}%" for c, p in zip(costos_ton, proporciones)],
                     textposition='auto'
                 )])
                 fig2.update_layout(
                     xaxis_title="Ingrediente",
-                    yaxis_title="Costo aportado (USD/kg de dieta)",
-                    title="Costo total aportado por ingrediente",
+                    yaxis_title="Costo aportado (USD/tonelada de dieta)",
+                    title="Costo total aportado por ingrediente (USD/tonelada)",
                     showlegend=False
                 )
                 st.plotly_chart(fig2, use_container_width=True)
-                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.4f} USD/kg")
+                st.markdown(f"**Costo total de la fórmula:** ${total_costo_ton:.2f} USD/tonelada")
                 st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
 
             with tab3:
-                st.markdown("#### Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
+                st.markdown("#### Costo por unidad de nutriente aportada (USD/tonelada por unidad de nutriente)")
                 nut_tabs = st.tabs([nut for nut in nutrientes_seleccionados])
                 for i, nut in enumerate(nutrientes_seleccionados):
                     with nut_tabs[i]:
@@ -245,7 +247,8 @@ if menu == "Análisis de Dieta":
                             aporte = (aporte * row["% Inclusión"]) / 100 if pd.notnull(aporte) else 0
                             costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                             costo_unitario = (costo / aporte) if aporte > 0 else np.nan
-                            costos_unit.append(costo_unitario)
+                            costo_unitario_ton = costo_unitario * 1000 if not np.isnan(costo_unitario) else np.nan
+                            costos_unit.append(costo_unitario_ton)
                         unidad = unidades_dict.get(nut, "")
                         fig3 = go.Figure()
                         fig3.add_trace(go.Bar(
@@ -257,8 +260,8 @@ if menu == "Análisis de Dieta":
                         ))
                         fig3.update_layout(
                             xaxis_title="Ingrediente",
-                            yaxis_title=f"Costo por unidad de {nut} ({unidad})" if unidad else f"Costo por unidad de {nut}",
-                            title=f"Costo por unidad de {nut} ({unidad})" if unidad else f"Costo por unidad de {nut}"
+                            yaxis_title=f"Costo por unidad de {nut} (USD/ton por {unidad})" if unidad else f"Costo por unidad de {nut} (USD/ton)",
+                            title=f"Costo por unidad de {nut} (USD/ton por {unidad})" if unidad else f"Costo por unidad de {nut} (USD/ton)"
                         )
                         st.plotly_chart(fig3, use_container_width=True)
 
@@ -266,7 +269,7 @@ if menu == "Análisis de Dieta":
             - Puedes modificar los precios de los ingredientes y ver el impacto instantáneamente.
             - Selecciona los nutrientes que más te interesan para un análisis enfocado.
             - Las pestañas te permiten comparar visualmente: el costo total por ingrediente (proporcional), el aporte por nutriente y el costo por unidad de nutriente.
-            - **Recuerda:** El precio de cada ingrediente se ingresa y visualiza en USD por tonelada (USD/ton). Los cálculos internos y los resultados de costo total se muestran en USD/kg.
+            - **Recuerda:** El precio de cada ingrediente se ingresa y visualiza en USD por tonelada (USD/ton). Los cálculos internos y los resultados de costo total se muestran en USD/tonelada en los gráficos y tablas.
             """)
 
         else:
