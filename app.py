@@ -113,257 +113,91 @@ if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
 # ===================== ANÁLISIS DE DIETA =====================
+import streamlit as st
+import pandas as pd
+import numpy as np
 
-if menu == "Análisis de Dieta":
-    st.header("Matriz de Ingredientes - Análisis Avanzado de Costos y Alternativas")
+# 1. Cargar matriz de ingredientes
+@st.cache_data
+def cargar_ingredientes():
+    df = pd.read_csv("Ingredientes1.csv", sep=";")
+    df = df.replace("-", np.nan)
+    # Normaliza nombres de columna para facilidad de acceso
+    df.columns = [c.strip() for c in df.columns]
+    return df
 
-    ingredientes_base = [
-        {"Ingrediente": "Maíz", "Precio ($/kg)": 0.28, "Energía (kcal/kg)": 3350, "Proteína (%)": 8.5, "Lisina (%)": 0.25, "Calcio (%)": 0.02, "% Inclusión": 50},
-        {"Ingrediente": "Soja", "Precio ($/kg)": 0.42, "Energía (kcal/kg)": 2400, "Proteína (%)": 46.0, "Lisina (%)": 2.85, "Calcio (%)": 0.30, "% Inclusión": 25},
-        {"Ingrediente": "Harina de carne", "Precio ($/kg)": 0.60, "Energía (kcal/kg)": 2100, "Proteína (%)": 52.0, "Lisina (%)": 3.10, "Calcio (%)": 5.50, "% Inclusión": 10},
-        {"Ingrediente": "Aceite", "Precio ($/kg)": 1.00, "Energía (kcal/kg)": 8800, "Proteína (%)": 0.0, "Lisina (%)": 0.0, "Calcio (%)": 0.0, "% Inclusión": 5},
-        {"Ingrediente": "Sal", "Precio ($/kg)": 0.18, "Energía (kcal/kg)": 0, "Proteína (%)": 0.0, "Lisina (%)": 0.0, "Calcio (%)": 0.0, "% Inclusión": 5},
-        {"Ingrediente": "Premix", "Precio ($/kg)": 0.80, "Energía (kcal/kg)": 0, "Proteína (%)": 0.0, "Lisina (%)": 0.1, "Calcio (%)": 1.5, "% Inclusión": 5},
-    ]
+df_ing = cargar_ingredientes()
 
-    # Alternativas simples sugeridas
-    alternativas_db = [
-        {"Ingrediente": "Sorgo", "Precio ($/kg)": 0.22, "Energía (kcal/kg)": 3200, "Proteína (%)": 9.5, "Lisina (%)": 0.24, "Calcio (%)": 0.02, "Alternativa de": "Maíz"},
-        {"Ingrediente": "Canola", "Precio ($/kg)": 0.40, "Energía (kcal/kg)": 2300, "Proteína (%)": 38.0, "Lisina (%)": 1.90, "Calcio (%)": 0.36, "Alternativa de": "Soja"},
-        {"Ingrediente": "Girasol", "Precio ($/kg)": 0.38, "Energía (kcal/kg)": 2200, "Proteína (%)": 35.0, "Lisina (%)": 1.50, "Calcio (%)": 0.32, "Alternativa de": "Soja"},
-        {"Ingrediente": "DDGS", "Precio ($/kg)": 0.33, "Energía (kcal/kg)": 2800, "Proteína (%)": 28.0, "Lisina (%)": 0.80, "Calcio (%)": 0.10, "Alternativa de": "Harina de carne"},
-    ]
+st.title("Constructor Visual de Dieta")
 
-    columnas = ["Ingrediente", "Precio ($/kg)", "Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)", "% Inclusión"]
+# 2. Selección de ingredientes
+ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
+ingredientes_seleccionados = st.multiselect(
+    "Selecciona tus ingredientes", ingredientes_lista, default=[]
+)
 
-    if "ingredientes" not in st.session_state or not isinstance(st.session_state["ingredientes"], list):
-        st.session_state["ingredientes"] = ingredientes_base.copy()
-
-    # Limpiar ingredientes
-    ingredientes_limpios = []
-    for ing in st.session_state["ingredientes"]:
-        if isinstance(ing, dict) and all(k in ing for k in columnas):
-            ingredientes_limpios.append(ing)
-    if not ingredientes_limpios:
-        ingredientes_limpios = ingredientes_base.copy()
-    st.session_state["ingredientes"] = ingredientes_limpios
-    ingredientes = st.session_state["ingredientes"]
-
-    tab_names = [ing["Ingrediente"] for ing in ingredientes] + ["➕ Nuevo Ingrediente"]
-    tabs = st.tabs(tab_names)
-
-    tooltips = {
-        "Precio ($/kg)": "Costo estimado en dólares por kilogramo del ingrediente.",
-        "Energía (kcal/kg)": "Energía metabolizable aportada por el ingrediente (kcal/kg).",
-        "Proteína (%)": "Porcentaje de proteína bruta sobre materia seca.",
-        "Lisina (%)": "Porcentaje de lisina en base al ingrediente.",
-        "Calcio (%)": "Porcentaje de calcio aportado.",
-        "% Inclusión": "Porcentaje del ingrediente en la fórmula total (100% sumando todos)."
-    }
-
-    # Edición de ingredientes
-    for idx, ing in enumerate(ingredientes):
-        with tabs[idx]:
-            st.subheader(f"🧬 {ing['Ingrediente']}")
-            st.markdown(f"#### Edita los valores para {ing['Ingrediente']}")
-            col1, col2 = st.columns(2)
-            with col1:
-                ing_name = st.text_input(
-                    "Nombre del ingrediente",
-                    value=ing["Ingrediente"],
-                    key=f"name_{idx}",
-                    help="Nombre único para el ingrediente"
-                )
-                ing["Ingrediente"] = ing_name
-
-            with col2:
-                if st.button("🗑️ Eliminar ingrediente", key=f"del_{idx}"):
-                    st.session_state["ingredientes"].pop(idx)
-                    st.experimental_rerun()
-
-            for key in columnas:
-                if key == "Ingrediente":
-                    continue
-                valor = ing[key]
-                helptext = tooltips.get(key, "")
-                nuevo_valor = st.number_input(
-                    key,
-                    min_value=0.0,
-                    value=float(valor),
-                    step=0.01 if "%" in key else 1.0,
-                    key=f"{key}_{idx}",
-                    help=helptext,
-                    format="%.4f" if "%" in key else "%.2f"
-                )
-                ing[key] = nuevo_valor
-
-            if st.button("📋 Duplicar este ingrediente", key=f"dup_{idx}"):
-                copia = ing.copy()
-                copia["Ingrediente"] = copia["Ingrediente"] + " (copia)"
-                st.session_state["ingredientes"].append(copia)
-                st.experimental_rerun()
-
-    # Pestaña para agregar nuevo ingrediente
-    with tabs[-1]:
-        st.subheader("Agregar nuevo ingrediente")
-        nuevo = {}
-        col1, col2 = st.columns(2)
-        with col1:
-            nuevo["Ingrediente"] = st.text_input("Nombre nuevo ingrediente", key="new_ingr", help="Nombre único para el nuevo ingrediente")
-        for col in columnas:
-            if col == "Ingrediente":
-                continue
-            helptext = tooltips.get(col, "")
-            nuevo[col] = st.number_input(
-                f"{col}",
-                min_value=0.0,
-                value=0.0,
-                step=0.01 if "%" in col else 1.0,
-                key=f"new_{col}",
-                help=helptext,
-                format="%.4f" if "%" in col else "%.2f"
-            )
-        with col2:
-            if st.button("Agregar", key="add_ing"):
-                nombres_actuales = [i["Ingrediente"] for i in st.session_state["ingredientes"]]
-                if nuevo["Ingrediente"] and nuevo["Ingrediente"] not in nombres_actuales:
-                    st.session_state["ingredientes"].append(nuevo)
-                    st.success(f"Ingrediente '{nuevo['Ingrediente']}' agregado.")
-                    st.experimental_rerun()
-                else:
-                    st.warning("El nombre es obligatorio y no debe estar repetido.")
-
-    st.markdown("---")
-    buscar = st.text_input("🔎 Buscar ingrediente por nombre", "")
-    filas_validas = []
-    for i in st.session_state["ingredientes"]:
-        if isinstance(i, dict) and all(k in i for k in columnas):
-            if buscar.lower() in i["Ingrediente"].lower() if buscar else True:
-                filas_validas.append([i[c] for c in columnas])
-    df_vista = pd.DataFrame(filas_validas, columns=columnas)
-    if df_vista.empty:
-        df_vista = pd.DataFrame(columns=columnas)
-    st.dataframe(df_vista)
-
-    # ========== 1. Ranking de Ingredientes más Costosos ==========
-    st.subheader("Ranking de Ingredientes por Aporte al Costo")
-    df_costos = df_vista.copy()
-    if not df_costos.empty:
-        df_costos["Costo Parcial"] = df_costos["% Inclusión"] / 100 * df_costos["Precio ($/kg)"]
-        df_costos = df_costos.sort_values("Costo Parcial", ascending=False)
-        st.bar_chart(df_costos.set_index("Ingrediente")["Costo Parcial"])
-        st.dataframe(df_costos[["Ingrediente", "% Inclusión", "Precio ($/kg)", "Costo Parcial"]])
-        ingrediente_mas_costoso = df_costos.iloc[0]["Ingrediente"]
-    else:
-        st.info("No hay datos para analizar el costo de ingredientes.")
-        ingrediente_mas_costoso = None
-
-    # ========== 2. Ranking de nutrientes más costosos ==========
-    st.subheader("Ranking de Nutrientes más Costosos en la Dieta")
-    nutrientes = ["Proteína (%)", "Energía (kcal/kg)", "Lisina (%)", "Calcio (%)"]
-    resumen_nutrientes = []
-    if not df_costos.empty:
-        total_kg = sum(df_costos["% Inclusión"]) / 100
-        for nut in nutrientes:
-            total_nut = sum(df_costos["% Inclusión"] / 100 * df_costos[nut])
-            if total_nut > 0:
-                costo_nut = sum(
-                    (df_costos["% Inclusión"] / 100 * df_costos[nut]) / total_nut * df_costos["Costo Parcial"]
-                )
-            else:
-                costo_nut = 0
-            resumen_nutrientes.append({"Nutriente": nut, "Aporte total": total_nut, "Costo asociado": costo_nut})
-        df_nut = pd.DataFrame(resumen_nutrientes)
-        if not df_nut.empty:
-            df_nut = df_nut.sort_values("Costo asociado", ascending=False)
-            st.bar_chart(df_nut.set_index("Nutriente")["Costo asociado"])
-            st.dataframe(df_nut)
-            nutriente_mas_costoso = df_nut.iloc[0]["Nutriente"]
-        else:
-            st.info("No hay datos de nutrientes.")
-    else:
-        st.info("No hay datos de nutrientes.")
-
-    # ========== 3. Sugerencias simples de sustitución ==========
-    st.subheader("Sugerencias de Sustitución de Materias Primas")
-    sugerencias = []
-    for idx, row in df_costos.iterrows():
-        ingrediente = row["Ingrediente"]
-        costo_parcial = row["Costo Parcial"]
-        # Buscar alternativas
-        alternativas = [alt for alt in alternativas_db if alt["Alternativa de"].lower() == ingrediente.lower()]
-        if alternativas:
-            for alt in alternativas:
-                sugerencias.append({
-                    "Ingrediente actual": ingrediente,
-                    "Costo actual": costo_parcial,
-                    "Alternativa sugerida": alt["Ingrediente"],
-                    "Precio alternativa": alt["Precio ($/kg)"],
-                    "Proteína (%)": alt["Proteína (%)"],
-                    "Energía (kcal/kg)": alt["Energía (kcal/kg)"],
-                })
-    if sugerencias:
-        st.dataframe(pd.DataFrame(sugerencias))
-        st.markdown(
-            "Puedes probar a reemplazar el ingrediente más costoso por su alternativa para ver el impacto en el costo total."
+# 3. Edición rápida de porcentaje de inclusión
+data_formula = []
+total_inclusion = 0
+for ing in ingredientes_seleccionados:
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.write(f"**{ing}**")
+    with col2:
+        porcentaje = st.number_input(
+            f"% inclusión para {ing}",
+            min_value=0.0,
+            max_value=100.0,
+            value=0.0,
+            step=0.1,
+            key=f"porc_{ing}"
         )
-    else:
-        st.info("No hay alternativas sugeridas para los ingredientes actuales.")
+    total_inclusion += porcentaje
+    fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
+    fila["% Inclusión"] = porcentaje
+    data_formula.append(fila)
 
-    # ========== 4. Simulador de sustitución y recomendaciones automáticas ==========
-    st.subheader("Simulador y Recomendaciones Automáticas")
-    if ingrediente_mas_costoso:
-        sugeridas = [alt for alt in alternativas_db if alt["Alternativa de"].lower() == ingrediente_mas_costoso.lower()]
-        if sugeridas:
-            alt = sugeridas[0]
-            st.markdown(f"**¿Quieres simular reemplazar {ingrediente_mas_costoso} por {alt['Ingrediente']}?**")
-            if st.button(f"Simular reemplazo de {ingrediente_mas_costoso} por {alt['Ingrediente']}"):
-                # Copia de ingredientes actual
-                ingredientes_nuevo = [i.copy() for i in ingredientes]
-                for i in ingredientes_nuevo:
-                    if i["Ingrediente"] == ingrediente_mas_costoso:
-                        # Reemplaza por alternativa
-                        for k in ["Ingrediente", "Precio ($/kg)", "Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]:
-                            i[k] = alt[k]
-                st.session_state["ingredientes"] = ingredientes_nuevo
-                st.success(f"Se simuló el reemplazo de {ingrediente_mas_costoso} por {alt['Ingrediente']}. Observa el nuevo análisis arriba.")
-                st.experimental_rerun()
-        else:
-            st.info("No hay alternativa inmediata para el ingrediente más costoso.")
+if ingredientes_seleccionados:
+    st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
+    if abs(total_inclusion - 100) > 0.01:
+        st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
 
-    # Recomendación automática simple
-    if not df_costos.empty and not df_nut.empty:
-        if df_costos.iloc[0]["Costo Parcial"] > 2 * df_costos["Costo Parcial"].mean():
-            st.warning(
-                f"El ingrediente **{df_costos.iloc[0]['Ingrediente']}** representa más del doble del costo promedio. Considera reducir su inclusión o buscar alternativas."
-            )
-        if df_nut.iloc[0]["Costo asociado"] > 1.5 * df_nut["Costo asociado"].mean():
-            st.warning(
-                f"El nutriente **{df_nut.iloc[0]['Nutriente']}** es el más caro de cubrir en la dieta. Revisa si puedes ajustar ingredientes para optimizar el costo de este nutriente."
-            )
+# 4. Visualización de la dieta construida
+if ingredientes_seleccionados:
+    df_formula = pd.DataFrame(data_formula)
+    st.subheader("Ingredientes y proporciones de tu dieta")
+    st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
 
-    # --- DESCARGA ---
-    filas_validas_export = []
-    for i in st.session_state["ingredientes"]:
-        if isinstance(i, dict) and all(k in i for k in columnas):
-            filas_validas_export.append([i[c] for c in columnas])
-    df_export = pd.DataFrame(filas_validas_export, columns=columnas)
-    if df_export.empty:
-        df_export = pd.DataFrame(columns=columnas)
-    excel_buffer = io.BytesIO()
-    df_export.to_excel(excel_buffer, index=False, engine='openpyxl')
-    excel_buffer.seek(0)
-    st.download_button(
-        "Descargar matriz en Excel",
-        data=excel_buffer,
-        file_name="matriz_ingredientes.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    # Gráfico visual
+    st.subheader("Visualización de proporciones")
+    st.plotly_chart({
+        "data": [
+            {
+                "labels": df_formula["Ingrediente"],
+                "values": df_formula["% Inclusión"],
+                "type": "pie"
+            }
+        ],
+        "layout": {"title": "Proporción de cada ingrediente"}
+    })
 
-    st.markdown("""
-    - Ahora puedes analizar los ingredientes y nutrientes más costosos, simular sustituciones y recibir recomendaciones automáticas.
-    - Cambia porcentajes, precios o composición y observa el impacto en tiempo real.
-    """)
+    # Composición y costo total de la dieta
+    st.subheader("Resumen nutricional y económico de la dieta")
+    columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
+    resumen = {}
+    for col in columnas_nut:
+        # Promedio ponderado según inclusión
+        resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
+    st.write(pd.DataFrame(resumen, index=["Dieta final"]))
+
+else:
+    st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
+
+st.markdown("""
+- Puedes buscar y seleccionar ingredientes de forma rápida.
+- Ajusta el % de inclusión de cada uno.
+- Visualiza la composición y el costo de tu dieta al instante.
+""")
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
