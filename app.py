@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
-# ----------- ESTILO CORPORATIVO -----------
+# ----------- ESTILO CORPORATIVO Y RADIO CÍRCULOS -----------
 st.markdown(
     """
     <style>
@@ -216,43 +216,52 @@ if menu == "Análisis de Dieta":
             st.subheader("Ingredientes y proporciones de tu dieta")
             st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"] + nutrientes_seleccionados])
 
-            # ----------- GRAFICO: BARRAS APILADAS POR NUTRIENTE -------------
-            st.subheader("Aporte de cada ingrediente a los nutrientes (barras apiladas)")
-            fig = go.Figure()
-            for ing in ingredientes_seleccionados:
-                valores = []
-                for nut in nutrientes_seleccionados:
-                    valor = pd.to_numeric(df_formula.loc[df_formula["Ingrediente"] == ing, nut], errors="coerce").values[0]
-                    porc = df_formula[df_formula["Ingrediente"] == ing]["% Inclusión"].values[0]
-                    aporte = (valor * porc) / 100 if pd.notnull(valor) else 0
-                    valores.append(aporte)
-                fig.add_trace(go.Bar(name=ing, x=nutrientes_seleccionados, y=valores))
-            fig.update_layout(barmode='stack', xaxis_title="Nutriente", yaxis_title="Aporte total (según % inclusión)")
-            st.plotly_chart(fig, use_container_width=True)
+            # --- PESTAÑAS DE VISUALIZACIÓN ---
+            tab1, tab2, tab3 = st.tabs([
+                "Aporte por Ingrediente a Nutrientes",
+                "Costo Total por Ingrediente",
+                "Costo por Unidad de Nutriente"
+            ])
 
-            # ----------- GRAFICO: COSTO POR INGREDIENTE -------------
-            st.subheader("Costo total aportado por cada ingrediente (USD/kg de dieta)")
-            costos = [
-                (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
-                for idx, row in df_formula.iterrows()
-            ]
-            fig2 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos, text=[f"{c:.2f}" for c in costos], textposition='auto')])
-            fig2.update_layout(xaxis_title="Ingrediente", yaxis_title="Costo aportado (USD/kg de dieta)")
-            st.plotly_chart(fig2, use_container_width=True)
+            with tab1:
+                st.markdown("#### Aporte de cada ingrediente a los nutrientes (barras apiladas)")
+                fig = go.Figure()
+                for ing in ingredientes_seleccionados:
+                    valores = []
+                    for nut in nutrientes_seleccionados:
+                        valor = pd.to_numeric(df_formula.loc[df_formula["Ingrediente"] == ing, nut], errors="coerce").values[0]
+                        porc = df_formula[df_formula["Ingrediente"] == ing]["% Inclusión"].values[0]
+                        aporte = (valor * porc) / 100 if pd.notnull(valor) else 0
+                        valores.append(aporte)
+                    fig.add_trace(go.Bar(name=ing, x=nutrientes_seleccionados, y=valores))
+                fig.update_layout(barmode='stack', xaxis_title="Nutriente", yaxis_title="Aporte total (según % inclusión)")
+                st.plotly_chart(fig, use_container_width=True)
 
-            # ----------- GRAFICO: COSTO POR UNIDAD DE NUTRIENTE -------------
-            st.subheader("Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
-            for nut in nutrientes_seleccionados:
-                costos_unit = []
-                for idx, row in df_formula.iterrows():
-                    aporte = pd.to_numeric(row[nut], errors="coerce")
-                    aporte = (aporte * row["% Inclusión"]) / 100 if pd.notnull(aporte) else 0
-                    costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
-                    costo_unitario = (costo / aporte) if aporte > 0 else np.nan
-                    costos_unit.append(costo_unitario)
-                fig3 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos_unit, text=[f"{c:.2f}" if not np.isnan(c) else "-" for c in costos_unit], textposition='auto')])
-                fig3.update_layout(xaxis_title="Ingrediente", yaxis_title=f"Costo por unidad de {nut}", title=f"Costo por unidad de {nut}")
-                st.plotly_chart(fig3, use_container_width=True)
+            with tab2:
+                st.markdown("#### Costo total aportado por cada ingrediente (USD/kg de dieta)")
+                costos = [
+                    (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                    for idx, row in df_formula.iterrows()
+                ]
+                fig2 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos, text=[f"{c:.2f}" for c in costos], textposition='auto')])
+                fig2.update_layout(xaxis_title="Ingrediente", yaxis_title="Costo aportado (USD/kg de dieta)")
+                st.plotly_chart(fig2, use_container_width=True)
+
+            with tab3:
+                st.markdown("#### Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
+                nut_tabs = st.tabs([nut for nut in nutrientes_seleccionados])
+                for i, nut in enumerate(nutrientes_seleccionados):
+                    with nut_tabs[i]:
+                        costos_unit = []
+                        for idx, row in df_formula.iterrows():
+                            aporte = pd.to_numeric(row[nut], errors="coerce")
+                            aporte = (aporte * row["% Inclusión"]) / 100 if pd.notnull(aporte) else 0
+                            costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                            costo_unitario = (costo / aporte) if aporte > 0 else np.nan
+                            costos_unit.append(costo_unitario)
+                        fig3 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos_unit, text=[f"{c:.2f}" if not np.isnan(c) else "-" for c in costos_unit], textposition='auto')])
+                        fig3.update_layout(xaxis_title="Ingrediente", yaxis_title=f"Costo por unidad de {nut}", title=f"Costo por unidad de {nut}")
+                        st.plotly_chart(fig3, use_container_width=True)
 
             st.markdown("""
             - Puedes modificar los precios de los ingredientes y ver el impacto instantáneamente.
@@ -264,6 +273,32 @@ if menu == "Análisis de Dieta":
 
         else:
             st.info("Selecciona ingredientes y nutrientes para comenzar el análisis y visualización.")
+
+# ============= SIMULADOR PRODUCTIVO =============
+elif menu == "Simulador Productivo":
+    st.header("Simulador Productivo")
+    # Recupera y muestra la configuración genética editable
+    st.subheader("Configuración genética y parámetros productivos")
+    df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
+    edit_df = st.data_editor(
+        df_gen,
+        num_rows="dynamic",
+        use_container_width=True,
+        key="df_genetica_editor"
+    )
+    if st.button("Guardar cambios de genética"):
+        st.session_state["genetica_edit"] = edit_df.copy()
+        st.success("¡Datos de genética actualizados!")
+
+    st.markdown("""
+    <ul>
+    <li>Modifica los parámetros de línea, edad, peso, consumo y FCR según tus necesidades productivas.</li>
+    <li>Haz clic en <b>Guardar cambios de genética</b> para actualizar la configuración que se utilizará en los demás cálculos y simulaciones.</li>
+    </ul>
+    """, unsafe_allow_html=True)
+
+    st.write("Vista previa de la configuración genética actual:")
+    st.dataframe(st.session_state["genetica_edit"])
 
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
