@@ -46,6 +46,37 @@ st.markdown(
         border: none !important;
         font-weight: 600 !important;
     }
+    /* Estilo para los círculos del radio en la barra lateral */
+    .stSidebar .stRadio [role="radiogroup"] > div {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.7rem;
+    }
+    .stSidebar .stRadio [role="radiogroup"] > div > label {
+        width: 100%;
+        color: #fff !important;
+        font-size: 19px !important;
+        font-family: 'Montserrat', Arial, sans-serif !important;
+        letter-spacing: 0.5px;
+        margin-left: 0.5rem;
+    }
+    .stSidebar .stRadio [role="radiogroup"] input[type="radio"] {
+        width: 22px;
+        height: 22px;
+        accent-color: #fff;
+        border: 2px solid #fff;
+        margin-right: 0.7rem;
+        margin-left: 0.2rem;
+    }
+    .stSidebar .stRadio [role="radiogroup"] input[type="radio"]:checked {
+        accent-color: #00b4d7;
+        outline: 3px solid #00b4d7;
+        outline-offset: 1.5px;
+    }
+    /* Mejora para que el círculo se vea blanco sobre el fondo azul */
+    .stSidebar .stRadio [role="radiogroup"] input[type="radio"] {
+        background: #19345c;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -53,18 +84,18 @@ st.markdown(
 
 # ---------- SIDEBAR EMPRESARIAL ----------
 with st.sidebar:
-    st.image("nombre_archivo_logo.png", width=90)
+    st.image("nombre_archivo_logo.png", width=110)
     st.markdown(
         """
-        <div style='text-align: center;'>
-            <div style='font-size:24px;font-family:Montserrat,Arial;color:#fff; margin-top: 10px;letter-spacing:1px;'>
-                <b>UYWA-NUTRITION<sup>®</sup></b>
+        <div style='text-align: center; margin-bottom:10px;'>
+            <div style='font-size:32px;font-family:Montserrat,Arial;color:#fff; margin-top: 10px;letter-spacing:1px; font-weight:700; line-height:1.1;'>
+                UYWA-<br>NUTRITION<sup>®</sup>
             </div>
-            <div style='font-size:13px;color:#fff; margin-top: 5px; font-family:Montserrat,Arial;'>
+            <div style='font-size:16px;color:#fff; margin-top: 5px; font-family:Montserrat,Arial; line-height: 1.1;'>
                 Nutrición de Precisión Basada en Evidencia
             </div>
-            <hr style='border-top:1px solid #2e4771; margin: 10px 0;'>
-            <div style='font-size:12px;color:#fff; margin-top: 8px;'>
+            <hr style='border-top:1px solid #2e4771; margin: 18px 0;'>
+            <div style='font-size:14px;color:#fff; margin-top: 8px;'>
                 <b>Contacto:</b> uywasas@gmail.com<br>
                 Derechos reservados © 2025
             </div>
@@ -86,6 +117,28 @@ with st.sidebar:
 
 st.title("Gestión y Análisis de Dietas")
 
+# ==================== Inicialización de session_state ====================
+# Datos base de genética
+datos_geneticos_base = pd.DataFrame({
+    "linea": ["Cobb", "Cobb", "Cobb", "Cobb", "Ross", "Ross", "Ross", "Ross"],
+    "edad": [28, 35, 42, 49, 28, 35, 42, 49],
+    "peso": [1.35, 1.95, 2.5, 3.05, 1.35, 1.95, 2.5, 3.05],
+    "consumo": [2.2, 3.1, 4.3, 5.6, 2.2, 3.1, 4.3, 5.6],
+    "fcr": [1.63, 1.59, 1.72, 1.84, 1.63, 1.59, 1.72, 1.84]
+})
+
+if "genetica_edit" not in st.session_state:
+    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
+elif not isinstance(st.session_state["genetica_edit"], pd.DataFrame):
+    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
+
+if 'escenarios_guardados' not in st.session_state:
+    st.session_state['escenarios_guardados'] = []
+
+if 'escenarios_eco' not in st.session_state:
+    st.session_state['escenarios_eco'] = []
+
+# INGREDIENTES (Análisis de Dieta)
 @st.cache_data
 def cargar_ingredientes_excel(archivo):
     df = pd.read_excel(archivo)
