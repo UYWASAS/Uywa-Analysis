@@ -1,4 +1,3 @@
-import io
 import os
 import streamlit as st
 import pandas as pd
@@ -7,6 +6,86 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
+# ----------- ESTILO CORPORATIVO -----------
+st.markdown(
+    """
+    <style>
+    body, .stApp {
+        background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
+    }
+    .stSidebar, .stSidebarContent, .stSidebar * {
+        background: #19345c !important;
+        color: #fff !important;
+    }
+    .stSidebar [data-testid="stImage"] img {
+        margin: 0 auto;
+        display: block;
+    }
+    section.main, section.main * {
+        font-family: 'Montserrat', 'Arial', sans-serif !important;
+    }
+    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader {
+        color: #19345c !important;
+    }
+    .stMarkdown, .stText, .stCaption, .stDataFrame, .stTabs, .stTab, .stMetric, .stAlert, .stExpander, .stNumberInput, .stSlider, .stSelectbox {
+        color: #222 !important;
+    }
+    label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
+        color: #19345c !important;
+        font-weight: 600 !important;
+    }
+    .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
+        background: #f4f8fa !important;
+        border-radius: 6px !important;
+        color: #19345c !important;
+    }
+    .stButton>button {
+        background-color: #204080 !important;
+        color: #fff !important;
+        border-radius: 6px !important;
+        border: none !important;
+        font-weight: 600 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------- SIDEBAR EMPRESARIAL ----------
+with st.sidebar:
+    st.image("nombre_archivo_logo.png", width=90)
+    st.markdown(
+        """
+        <div style='text-align: center;'>
+            <div style='font-size:24px;font-family:Montserrat,Arial;color:#fff; margin-top: 10px;letter-spacing:1px;'>
+                <b>UYWA-NUTRITION<sup>®</sup></b>
+            </div>
+            <div style='font-size:13px;color:#fff; margin-top: 5px; font-family:Montserrat,Arial;'>
+                Nutrición de Precisión Basada en Evidencia
+            </div>
+            <hr style='border-top:1px solid #2e4771; margin: 10px 0;'>
+            <div style='font-size:12px;color:#fff; margin-top: 8px;'>
+                <b>Contacto:</b> uywasas@gmail.com<br>
+                Derechos reservados © 2025
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    menu = st.radio(
+        "Selecciona una sección",
+        [
+            "Análisis de Dieta",
+            "Simulador Productivo",
+            "Simulador Económico",
+            "Comparador de Escenarios"
+        ],
+        key="menu_radio"
+    )
+
+st.title("Gestión y Análisis de Dietas")
+
 @st.cache_data
 def cargar_ingredientes_excel(archivo):
     df = pd.read_excel(archivo)
@@ -14,8 +93,8 @@ def cargar_ingredientes_excel(archivo):
     df.columns = [c.strip() for c in df.columns]
     return df
 
-# ------------- BLOQUE DE NAVEGACIÓN PRINCIPAL ----------------
-if "Análisis de Dieta" in st.session_state.get("menu", "Análisis de Dieta"):
+# ============ ANÁLISIS DE DIETA =============
+if menu == "Análisis de Dieta":
     archivo_excel = "Ingredientes1.xlsx"
     df_ing = None
     if os.path.exists(archivo_excel):
@@ -38,11 +117,14 @@ if "Análisis de Dieta" in st.session_state.get("menu", "Análisis de Dieta"):
         posibles_cols = df_ing.columns.tolist()
         columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
         # Detecta columnas numéricas (nutrientes) excluyendo las fijas
-        columnas_nut = [col for col in posibles_cols if col not in columnas_fijas and df_ing[col].dtype in [np.float64, np.int64, float, int]]
+        columnas_nut = [
+            col for col in posibles_cols
+            if col not in columnas_fijas and pd.api.types.is_numeric_dtype(df_ing[col])
+        ]
         nutrientes_seleccionados = st.multiselect(
             "Selecciona nutrientes a analizar",
             columnas_nut,
-            default=columnas_nut[:4]  # selecciona los primeros 4 por defecto
+            default=columnas_nut[:4] if len(columnas_nut) >= 4 else columnas_nut
         )
 
         # ------------------- EDICIÓN DE INCLUSIÓN Y PRECIO --------------------
