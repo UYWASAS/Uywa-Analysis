@@ -2,7 +2,6 @@ import io
 import streamlit as st
 import pandas as pd
 import numpy as np
-import openpyxl as np
 import plotly.graph_objs as go
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
@@ -112,93 +111,81 @@ if 'escenarios_guardados' not in st.session_state:
 if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
-# ===================== ANÁLISIS DE DIETA =====================
-import streamlit as st
-import pandas as pd
-import numpy as np
+# ------------- BLOQUE DE NAVEGACIÓN PRINCIPAL ----------------
+if menu == "Análisis de Dieta":
+    # -------------- ANÁLISIS DE DIETA --------------
+    @st.cache_data
+    def cargar_ingredientes():
+        df = pd.read_csv("Ingredientes1.csv", sep=";")
+        df = df.replace("-", np.nan)
+        df.columns = [c.strip() for c in df.columns]
+        return df
 
-# 1. Cargar matriz de ingredientes
-@st.cache_data
-def cargar_ingredientes():
-    df = pd.read_csv("Ingredientes1.csv", sep=";")
-    df = df.replace("-", np.nan)
-    # Normaliza nombres de columna para facilidad de acceso
-    df.columns = [c.strip() for c in df.columns]
-    return df
+    df_ing = cargar_ingredientes()
 
-df_ing = cargar_ingredientes()
+    st.title("Constructor Visual de Dieta")
 
-st.title("Constructor Visual de Dieta")
+    ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
+    ingredientes_seleccionados = st.multiselect(
+        "Selecciona tus ingredientes", ingredientes_lista, default=[]
+    )
 
-# 2. Selección de ingredientes
-ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
-ingredientes_seleccionados = st.multiselect(
-    "Selecciona tus ingredientes", ingredientes_lista, default=[]
-)
+    data_formula = []
+    total_inclusion = 0
+    for ing in ingredientes_seleccionados:
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.write(f"**{ing}**")
+        with col2:
+            porcentaje = st.number_input(
+                f"% inclusión para {ing}",
+                min_value=0.0,
+                max_value=100.0,
+                value=0.0,
+                step=0.1,
+                key=f"porc_{ing}"
+            )
+        total_inclusion += porcentaje
+        fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
+        fila["% Inclusión"] = porcentaje
+        data_formula.append(fila)
 
-# 3. Edición rápida de porcentaje de inclusión
-data_formula = []
-total_inclusion = 0
-for ing in ingredientes_seleccionados:
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.write(f"**{ing}**")
-    with col2:
-        porcentaje = st.number_input(
-            f"% inclusión para {ing}",
-            min_value=0.0,
-            max_value=100.0,
-            value=0.0,
-            step=0.1,
-            key=f"porc_{ing}"
-        )
-    total_inclusion += porcentaje
-    fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
-    fila["% Inclusión"] = porcentaje
-    data_formula.append(fila)
+    if ingredientes_seleccionados:
+        st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
+        if abs(total_inclusion - 100) > 0.01:
+            st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
 
-if ingredientes_seleccionados:
-    st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
-    if abs(total_inclusion - 100) > 0.01:
-        st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
+    if ingredientes_seleccionados:
+        df_formula = pd.DataFrame(data_formula)
+        st.subheader("Ingredientes y proporciones de tu dieta")
+        st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
 
-# 4. Visualización de la dieta construida
-if ingredientes_seleccionados:
-    df_formula = pd.DataFrame(data_formula)
-    st.subheader("Ingredientes y proporciones de tu dieta")
-    st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
+        st.subheader("Visualización de proporciones")
+        st.plotly_chart({
+            "data": [
+                {
+                    "labels": df_formula["Ingrediente"],
+                    "values": df_formula["% Inclusión"],
+                    "type": "pie"
+                }
+            ],
+            "layout": {"title": "Proporción de cada ingrediente"}
+        })
 
-    # Gráfico visual
-    st.subheader("Visualización de proporciones")
-    st.plotly_chart({
-        "data": [
-            {
-                "labels": df_formula["Ingrediente"],
-                "values": df_formula["% Inclusión"],
-                "type": "pie"
-            }
-        ],
-        "layout": {"title": "Proporción de cada ingrediente"}
-    })
+        st.subheader("Resumen nutricional y económico de la dieta")
+        columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
+        resumen = {}
+        for col in columnas_nut:
+            resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
+        st.write(pd.DataFrame(resumen, index=["Dieta final"]))
+    else:
+        st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
 
-    # Composición y costo total de la dieta
-    st.subheader("Resumen nutricional y económico de la dieta")
-    columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
-    resumen = {}
-    for col in columnas_nut:
-        # Promedio ponderado según inclusión
-        resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
-    st.write(pd.DataFrame(resumen, index=["Dieta final"]))
-
-else:
-    st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
-
-st.markdown("""
-- Puedes buscar y seleccionar ingredientes de forma rápida.
-- Ajusta el % de inclusión de cada uno.
-- Visualiza la composición y el costo de tu dieta al instante.
-""")
-
+    st.markdown("""
+    - Puedes buscar y seleccionar ingredientes de forma rápida.
+    - Ajusta el % de inclusión de cada uno.
+    - Visualiza la composición y el costo de tu dieta al instante.
+    """)
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
