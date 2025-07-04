@@ -129,7 +129,7 @@ if menu == "Análisis de Dieta":
 
         data_formula = []
         total_inclusion = 0
-        st.markdown("### Ajusta % inclusión y precio (USD/kg) de cada ingrediente")
+        st.markdown("### Ajusta % inclusión y precio (USD/tonelada) de cada ingrediente")
         for ing in ingredientes_seleccionados:
             fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
             cols = st.columns([2, 1, 1])
@@ -145,17 +145,19 @@ if menu == "Análisis de Dieta":
                     key=f"porc_{ing}"
                 )
             with cols[2]:
+                # Mostramos el precio en USD/tonelada, pero guardamos en USD/kg para cálculos
+                precio_kg = float(fila["precio"]) if "precio" in fila and pd.notnull(fila["precio"]) else 0.0
                 precio_mod = st.number_input(
-                    f"Precio {ing}",
+                    f"Precio {ing} (USD/tonelada)",
                     min_value=0.0,
-                    max_value=100.0,
-                    value=float(fila["precio"]) if "precio" in fila and pd.notnull(fila["precio"]) else 0.0,
-                    step=0.01,
+                    max_value=3000.0,
+                    value=precio_kg * 1000,
+                    step=1.0,
                     key=f"precio_{ing}"
                 )
             total_inclusion += porcentaje
             fila["% Inclusión"] = porcentaje
-            fila["precio"] = precio_mod
+            fila["precio"] = precio_mod / 1000  # Guardamos en USD/kg para cálculos
             data_formula.append(fila)
 
         st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
@@ -164,8 +166,11 @@ if menu == "Análisis de Dieta":
 
         if ingredientes_seleccionados and nutrientes_seleccionados:
             df_formula = pd.DataFrame(data_formula)
+            # Para mostrar el precio en USD/tonelada en la tabla
+            df_mostrar = df_formula.copy()
+            df_mostrar["precio (USD/ton)"] = df_mostrar["precio"] * 1000
             st.subheader("Ingredientes y proporciones de tu dieta")
-            st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"] + nutrientes_seleccionados])
+            st.dataframe(df_mostrar[["Ingrediente", "% Inclusión", "precio (USD/ton)"] + nutrientes_seleccionados])
 
             color_palette = px.colors.qualitative.Plotly
             color_map = {ing: color_palette[idx % len(color_palette)] for idx, ing in enumerate(ingredientes_lista)}
@@ -215,7 +220,7 @@ if menu == "Análisis de Dieta":
                     x=ingredientes_seleccionados,
                     y=costos,
                     marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
-                    text=[f"{c:.2f} USD<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
+                    text=[f"{c:.4f} USD/kg<br>{p:.1f}%" for c, p in zip(costos, proporciones)],
                     textposition='auto'
                 )])
                 fig2.update_layout(
@@ -225,7 +230,7 @@ if menu == "Análisis de Dieta":
                     showlegend=False
                 )
                 st.plotly_chart(fig2, use_container_width=True)
-                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.2f} USD/kg")
+                st.markdown(f"**Costo total de la fórmula:** ${total_costo:.4f} USD/kg")
                 st.markdown("Cada barra muestra el costo y el porcentaje proporcional de cada ingrediente respecto al costo total de la dieta.")
 
             with tab3:
@@ -247,7 +252,7 @@ if menu == "Análisis de Dieta":
                             x=ingredientes_seleccionados,
                             y=costos_unit,
                             marker_color=[color_map[ing] for ing in ingredientes_seleccionados],
-                            text=[f"{c:.2f}" if not np.isnan(c) else "-" for c in costos_unit],
+                            text=[f"{c:.4f}" if not np.isnan(c) else "-" for c in costos_unit],
                             textposition='auto'
                         ))
                         fig3.update_layout(
@@ -261,6 +266,7 @@ if menu == "Análisis de Dieta":
             - Puedes modificar los precios de los ingredientes y ver el impacto instantáneamente.
             - Selecciona los nutrientes que más te interesan para un análisis enfocado.
             - Las pestañas te permiten comparar visualmente: el costo total por ingrediente (proporcional), el aporte por nutriente y el costo por unidad de nutriente.
+            - **Recuerda:** El precio de cada ingrediente se ingresa y visualiza en USD por tonelada (USD/ton). Los cálculos internos y los resultados de costo total se muestran en USD/kg.
             """)
 
         else:
