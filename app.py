@@ -7,82 +7,6 @@ import plotly.express as px
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
-# ----------- ESTILO CORPORATIVO Y RADIO CÍRCULOS -----------
-st.markdown(
-    """
-    <style>
-    body, .stApp {
-        background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
-    }
-    .stSidebar, .stSidebarContent, .stSidebar * {
-        background: #19345c !important;
-        color: #fff !important;
-    }
-    .stSidebar [data-testid="stImage"] img {
-        margin: 0 auto;
-        display: block;
-    }
-    section.main, section.main * {
-        font-family: 'Montserrat', 'Arial', sans-serif !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader {
-        color: #19345c !important;
-    }
-    .stMarkdown, .stText, .stCaption, .stDataFrame, .stTabs, .stTab, .stMetric, .stAlert, .stExpander, .stNumberInput, .stSlider, .stSelectbox {
-        color: #222 !important;
-    }
-    label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
-        color: #19345c !important;
-        font-weight: 600 !important;
-    }
-    .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
-        background: #f4f8fa !important;
-        border-radius: 6px !important;
-        color: #19345c !important;
-    }
-    .stButton>button {
-        background-color: #204080 !important;
-        color: #fff !important;
-        border-radius: 6px !important;
-        border: none !important;
-        font-weight: 600 !important;
-    }
-    /* Estilo para los círculos del radio en la barra lateral */
-    .stSidebar .stRadio [role="radiogroup"] > div {
-        display: flex;
-        align-items: center;
-        margin-bottom: 0.7rem;
-    }
-    .stSidebar .stRadio [role="radiogroup"] > div > label {
-        width: 100%;
-        color: #fff !important;
-        font-size: 19px !important;
-        font-family: 'Montserrat', Arial, sans-serif !important;
-        letter-spacing: 0.5px;
-        margin-left: 0.5rem;
-    }
-    .stSidebar .stRadio [role="radiogroup"] input[type="radio"] {
-        width: 22px;
-        height: 22px;
-        accent-color: #fff;
-        border: 2px solid #fff;
-        margin-right: 0.7rem;
-        margin-left: 0.2rem;
-    }
-    .stSidebar .stRadio [role="radiogroup"] input[type="radio"]:checked {
-        accent-color: #00b4d7;
-        outline: 3px solid #00b4d7;
-        outline-offset: 1.5px;
-    }
-    /* Mejora para que el círculo se vea blanco sobre el fondo azul */
-    .stSidebar .stRadio [role="radiogroup"] input[type="radio"] {
-        background: #19345c;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 # ---------- SIDEBAR EMPRESARIAL ----------
 with st.sidebar:
     st.image("nombre_archivo_logo.png", width=110)
@@ -137,23 +61,30 @@ if 'escenarios_guardados' not in st.session_state:
 if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
+# --- Carga de ingredientes con detección de fila de unidades ---
 @st.cache_data
-def cargar_ingredientes_excel(archivo):
-    df = pd.read_excel(archivo)
-    df = df.replace("-", np.nan)
-    df.columns = [c.strip() for c in df.columns]
-    return df
+def cargar_ingredientes_excel_unidades(archivo):
+    # Lee el archivo, asume que la segunda fila es de unidades
+    df_full = pd.read_excel(archivo, header=None)
+    headers = df_full.iloc[0].values
+    unidades = df_full.iloc[1].values
+    # El resto de filas son datos
+    data = df_full.iloc[2:].copy()
+    data.columns = headers
+    unidades_dict = {headers[i]: unidades[i] for i in range(len(headers))}
+    return data.reset_index(drop=True), unidades_dict
 
 # ============ ANÁLISIS DE DIETA =============
 if menu == "Análisis de Dieta":
     archivo_excel = "Ingredientes1.xlsx"
     df_ing = None
+    unidades_dict = {}
     if os.path.exists(archivo_excel):
-        df_ing = cargar_ingredientes_excel(archivo_excel)
+        df_ing, unidades_dict = cargar_ingredientes_excel_unidades(archivo_excel)
     else:
         archivo_subido = st.file_uploader("Sube tu archivo de ingredientes (.xlsx)", type=["xlsx"])
         if archivo_subido is not None:
-            df_ing = cargar_ingredientes_excel(archivo_subido)
+            df_ing, unidades_dict = cargar_ingredientes_excel_unidades(archivo_subido)
         else:
             st.warning("No se encontró el archivo Ingredientes1.xlsx. Sube uno para continuar.")
 
@@ -211,13 +142,9 @@ if menu == "Análisis de Dieta":
             st.subheader("Ingredientes y proporciones de tu dieta")
             st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"] + nutrientes_seleccionados])
 
-            # PALETA DE COLORES CONSISTENTE PARA CADA INGREDIENTE
             color_palette = px.colors.qualitative.Plotly
-            # Asegura el mismo orden de colores siempre para los mismos ingredientes
-            ingredientes_ordenados = ingredientes_lista
-            color_map = {ing: color_palette[idx % len(color_palette)] for idx, ing in enumerate(ingredientes_ordenados)}
+            color_map = {ing: color_palette[idx % len(color_palette)] for idx, ing in enumerate(ingredientes_lista)}
 
-            # ORDEN: Aporte, Costo total, Costo por unidad
             tab1, tab2, tab3 = st.tabs([
                 "Aporte por Ingrediente a Nutrientes",
                 "Costo Total por Ingrediente",
@@ -235,6 +162,7 @@ if menu == "Análisis de Dieta":
                             porc = df_formula[df_formula["Ingrediente"] == ing]["% Inclusión"].values[0]
                             aporte = (valor * porc) / 100 if pd.notnull(valor) else 0
                             valores.append(aporte)
+                        unidad = unidades_dict.get(nut, "")
                         fig = go.Figure()
                         fig.add_trace(go.Bar(
                             x=ingredientes_seleccionados,
@@ -245,8 +173,8 @@ if menu == "Análisis de Dieta":
                         ))
                         fig.update_layout(
                             xaxis_title="Ingrediente",
-                            yaxis_title=f"Aporte de {nut} (según % inclusión)",
-                            title=f"Aporte de cada ingrediente a {nut}"
+                            yaxis_title=f"Aporte de {nut} ({unidad})" if unidad else f"Aporte de {nut}",
+                            title=f"Aporte de cada ingrediente a {nut} ({unidad})" if unidad else f"Aporte de cada ingrediente a {nut}"
                         )
                         st.plotly_chart(fig, use_container_width=True)
 
@@ -281,7 +209,6 @@ if menu == "Análisis de Dieta":
                 for i, nut in enumerate(nutrientes_seleccionados):
                     with nut_tabs[i]:
                         costos_unit = []
-                        # Usa el mismo color_map y orden de ingredientes para asegurar colores consistentes
                         for ing in ingredientes_seleccionados:
                             row = df_formula[df_formula["Ingrediente"] == ing].iloc[0]
                             aporte = pd.to_numeric(row[nut], errors="coerce")
@@ -289,6 +216,7 @@ if menu == "Análisis de Dieta":
                             costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                             costo_unitario = (costo / aporte) if aporte > 0 else np.nan
                             costos_unit.append(costo_unitario)
+                        unidad = unidades_dict.get(nut, "")
                         fig3 = go.Figure()
                         fig3.add_trace(go.Bar(
                             x=ingredientes_seleccionados,
@@ -299,8 +227,8 @@ if menu == "Análisis de Dieta":
                         ))
                         fig3.update_layout(
                             xaxis_title="Ingrediente",
-                            yaxis_title=f"Costo por unidad de {nut}",
-                            title=f"Costo por unidad de {nut}"
+                            yaxis_title=f"Costo por unidad de {nut} ({unidad})" if unidad else f"Costo por unidad de {nut}",
+                            title=f"Costo por unidad de {nut} ({unidad})" if unidad else f"Costo por unidad de {nut}"
                         )
                         st.plotly_chart(fig3, use_container_width=True)
 
