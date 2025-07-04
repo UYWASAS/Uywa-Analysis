@@ -262,6 +262,8 @@ if menu == "Análisis de Dieta":
     - Puedes buscar, duplicar, eliminar y agregar ingredientes fácilmente.
     - Descarga la matriz completa con tus ediciones en Excel.
     """)
+
+
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
