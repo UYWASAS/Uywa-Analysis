@@ -1,4 +1,5 @@
 import io
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -81,13 +82,11 @@ menu = st.sidebar.radio(
 )
 
 @st.cache_data
-def cargar_archivo(file):
-    if file is None:
-        return None
-    if file.name.endswith('.csv'):
-        return pd.read_csv(file)
-    else:
-        return pd.read_excel(file, sheet_name=0)
+def cargar_ingredientes(archivo):
+    df = pd.read_csv(archivo, sep=";")
+    df = df.replace("-", np.nan)
+    df.columns = [c.strip() for c in df.columns]
+    return df
 
 if 'ingredientes' not in st.session_state:
     st.session_state['ingredientes'] = None
@@ -114,78 +113,81 @@ if 'escenarios_eco' not in st.session_state:
 # ------------- BLOQUE DE NAVEGACIÓN PRINCIPAL ----------------
 if menu == "Análisis de Dieta":
     # -------------- ANÁLISIS DE DIETA --------------
-    @st.cache_data
-    def cargar_ingredientes():
-        df = pd.read_csv("Ingredientes1.csv", sep=";")
-        df = df.replace("-", np.nan)
-        df.columns = [c.strip() for c in df.columns]
-        return df
 
-    df_ing = cargar_ingredientes()
-
-    st.title("Constructor Visual de Dieta")
-
-    ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
-    ingredientes_seleccionados = st.multiselect(
-        "Selecciona tus ingredientes", ingredientes_lista, default=[]
-    )
-
-    data_formula = []
-    total_inclusion = 0
-    for ing in ingredientes_seleccionados:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.write(f"**{ing}**")
-        with col2:
-            porcentaje = st.number_input(
-                f"% inclusión para {ing}",
-                min_value=0.0,
-                max_value=100.0,
-                value=0.0,
-                step=0.1,
-                key=f"porc_{ing}"
-            )
-        total_inclusion += porcentaje
-        fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
-        fila["% Inclusión"] = porcentaje
-        data_formula.append(fila)
-
-    if ingredientes_seleccionados:
-        st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
-        if abs(total_inclusion - 100) > 0.01:
-            st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
-
-    if ingredientes_seleccionados:
-        df_formula = pd.DataFrame(data_formula)
-        st.subheader("Ingredientes y proporciones de tu dieta")
-        st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
-
-        st.subheader("Visualización de proporciones")
-        st.plotly_chart({
-            "data": [
-                {
-                    "labels": df_formula["Ingrediente"],
-                    "values": df_formula["% Inclusión"],
-                    "type": "pie"
-                }
-            ],
-            "layout": {"title": "Proporción de cada ingrediente"}
-        })
-
-        st.subheader("Resumen nutricional y económico de la dieta")
-        columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
-        resumen = {}
-        for col in columnas_nut:
-            resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
-        st.write(pd.DataFrame(resumen, index=["Dieta final"]))
+    # ----- Soporte para archivo local o subida -----
+    archivo_csv = "Ingredientes1.csv"
+    df_ing = None
+    if os.path.exists(archivo_csv):
+        df_ing = cargar_ingredientes(archivo_csv)
     else:
-        st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
+        archivo_subido = st.file_uploader("Sube tu archivo de ingredientes (.csv)", type=["csv"])
+        if archivo_subido is not None:
+            df_ing = cargar_ingredientes(archivo_subido)
+        else:
+            st.warning("No se encontró el archivo Ingredientes1.csv. Sube uno para continuar.")
 
-    st.markdown("""
-    - Puedes buscar y seleccionar ingredientes de forma rápida.
-    - Ajusta el % de inclusión de cada uno.
-    - Visualiza la composición y el costo de tu dieta al instante.
-    """)
+    if df_ing is not None:
+        ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
+        ingredientes_seleccionados = st.multiselect(
+            "Selecciona tus ingredientes", ingredientes_lista, default=[]
+        )
+
+        data_formula = []
+        total_inclusion = 0
+        for ing in ingredientes_seleccionados:
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.write(f"**{ing}**")
+            with col2:
+                porcentaje = st.number_input(
+                    f"% inclusión para {ing}",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=0.0,
+                    step=0.1,
+                    key=f"porc_{ing}"
+                )
+            total_inclusion += porcentaje
+            fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
+            fila["% Inclusión"] = porcentaje
+            data_formula.append(fila)
+
+        if ingredientes_seleccionados:
+            st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
+            if abs(total_inclusion - 100) > 0.01:
+                st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
+
+        if ingredientes_seleccionados:
+            df_formula = pd.DataFrame(data_formula)
+            st.subheader("Ingredientes y proporciones de tu dieta")
+            st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
+
+            st.subheader("Visualización de proporciones")
+            st.plotly_chart({
+                "data": [
+                    {
+                        "labels": df_formula["Ingrediente"],
+                        "values": df_formula["% Inclusión"],
+                        "type": "pie"
+                    }
+                ],
+                "layout": {"title": "Proporción de cada ingrediente"}
+            })
+
+            st.subheader("Resumen nutricional y económico de la dieta")
+            columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
+            resumen = {}
+            for col in columnas_nut:
+                resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
+            st.write(pd.DataFrame(resumen, index=["Dieta final"]))
+        else:
+            st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
+
+        st.markdown("""
+        - Puedes buscar y seleccionar ingredientes de forma rápida.
+        - Ajusta el % de inclusión de cada uno.
+        - Visualiza la composición y el costo de tu dieta al instante.
+        """)
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
