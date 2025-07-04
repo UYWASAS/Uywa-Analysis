@@ -113,6 +113,7 @@ if 'escenarios_eco' not in st.session_state:
     st.session_state['escenarios_eco'] = []
 
 # ===================== ANÁLISIS DE DIETA =====================
+
 if menu == "Análisis de Dieta":
     st.header("Matriz de Ingredientes - Análisis Avanzado de Costos y Alternativas")
 
@@ -260,25 +261,26 @@ if menu == "Análisis de Dieta":
     # ========== 2. Ranking de nutrientes más costosos ==========
     st.subheader("Ranking de Nutrientes más Costosos en la Dieta")
     nutrientes = ["Proteína (%)", "Energía (kcal/kg)", "Lisina (%)", "Calcio (%)"]
-    total_kg = sum(df_vista["% Inclusión"]) / 100 if not df_vista.empty else 0
     resumen_nutrientes = []
-    for nut in nutrientes:
-        # Total nutriente en la dieta (kg o unidad)
-        total_nut = sum(df_vista["% Inclusión"] / 100 * df_vista[nut])
-        # Costo relativo: suma de (costo parcial × % del nutriente que aporta cada ingrediente)
-        if total_nut > 0:
-            costo_nut = sum(
-                (df_vista["% Inclusión"] / 100 * df_vista[nut]) / total_nut * df_vista["Costo Parcial"]
-            )
+    if not df_costos.empty:
+        total_kg = sum(df_costos["% Inclusión"]) / 100
+        for nut in nutrientes:
+            total_nut = sum(df_costos["% Inclusión"] / 100 * df_costos[nut])
+            if total_nut > 0:
+                costo_nut = sum(
+                    (df_costos["% Inclusión"] / 100 * df_costos[nut]) / total_nut * df_costos["Costo Parcial"]
+                )
+            else:
+                costo_nut = 0
+            resumen_nutrientes.append({"Nutriente": nut, "Aporte total": total_nut, "Costo asociado": costo_nut})
+        df_nut = pd.DataFrame(resumen_nutrientes)
+        if not df_nut.empty:
+            df_nut = df_nut.sort_values("Costo asociado", ascending=False)
+            st.bar_chart(df_nut.set_index("Nutriente")["Costo asociado"])
+            st.dataframe(df_nut)
+            nutriente_mas_costoso = df_nut.iloc[0]["Nutriente"]
         else:
-            costo_nut = 0
-        resumen_nutrientes.append({"Nutriente": nut, "Aporte total": total_nut, "Costo asociado": costo_nut})
-    df_nut = pd.DataFrame(resumen_nutrientes)
-    if not df_nut.empty:
-        df_nut = df_nut.sort_values("Costo asociado", ascending=False)
-        st.bar_chart(df_nut.set_index("Nutriente")["Costo asociado"])
-        st.dataframe(df_nut)
-        nutriente_mas_costoso = df_nut.iloc[0]["Nutriente"]
+            st.info("No hay datos de nutrientes.")
     else:
         st.info("No hay datos de nutrientes.")
 
@@ -362,7 +364,6 @@ if menu == "Análisis de Dieta":
     - Ahora puedes analizar los ingredientes y nutrientes más costosos, simular sustituciones y recibir recomendaciones automáticas.
     - Cambia porcentajes, precios o composición y observa el impacto en tiempo real.
     """)
-
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
