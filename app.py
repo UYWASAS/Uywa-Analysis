@@ -82,8 +82,8 @@ menu = st.sidebar.radio(
 )
 
 @st.cache_data
-def cargar_ingredientes(archivo):
-    df = pd.read_csv(archivo, sep=";")
+def cargar_ingredientes_excel(archivo):
+    df = pd.read_excel(archivo)
     df = df.replace("-", np.nan)
     df.columns = [c.strip() for c in df.columns]
     return df
@@ -115,16 +115,16 @@ if menu == "Análisis de Dieta":
     # -------------- ANÁLISIS DE DIETA --------------
 
     # ----- Soporte para archivo local o subida -----
-    archivo_csv = "Ingredientes1.csv"
+    archivo_excel = "Ingredientes1.xlsx"
     df_ing = None
-    if os.path.exists(archivo_csv):
-        df_ing = cargar_ingredientes(archivo_csv)
+    if os.path.exists(archivo_excel):
+        df_ing = cargar_ingredientes_excel(archivo_excel)
     else:
-        archivo_subido = st.file_uploader("Sube tu archivo de ingredientes (.csv)", type=["csv"])
+        archivo_subido = st.file_uploader("Sube tu archivo de ingredientes (.xlsx)", type=["xlsx"])
         if archivo_subido is not None:
-            df_ing = cargar_ingredientes(archivo_subido)
+            df_ing = cargar_ingredientes_excel(archivo_subido)
         else:
-            st.warning("No se encontró el archivo Ingredientes1.csv. Sube uno para continuar.")
+            st.warning("No se encontró el archivo Ingredientes1.xlsx. Sube uno para continuar.")
 
     if df_ing is not None:
         ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
@@ -188,6 +188,7 @@ if menu == "Análisis de Dieta":
         - Ajusta el % de inclusión de cada uno.
         - Visualiza la composición y el costo de tu dieta al instante.
         """)
+    
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
