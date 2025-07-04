@@ -130,9 +130,10 @@ if menu == "Análisis de Dieta":
         st.session_state["ingredientes"] = ingredientes_base.copy()
 
     # Limpiar ingredientes: solo dicts válidos
+    columnas = ["Ingrediente", "Precio ($/kg)", "Energía (kcal/kg)", "Proteína (%)", "Lisina (%)", "Calcio (%)"]
     ingredientes_limpios = []
     for ing in st.session_state["ingredientes"]:
-        if isinstance(ing, dict) and "Ingrediente" in ing:
+        if isinstance(ing, dict) and all(k in ing for k in columnas):
             ingredientes_limpios.append(ing)
     if not ingredientes_limpios:
         ingredientes_limpios = ingredientes_base.copy()
@@ -169,7 +170,7 @@ if menu == "Análisis de Dieta":
                     st.session_state["ingredientes"].pop(idx)
                     st.experimental_rerun()
 
-            for key in ing.keys():
+            for key in columnas:
                 if key == "Ingrediente":
                     continue
                 valor = ing[key]
@@ -203,7 +204,7 @@ if menu == "Análisis de Dieta":
         col1, col2 = st.columns(2)
         with col1:
             nuevo["Ingrediente"] = st.text_input("Nombre nuevo ingrediente", key="new_ingr", help="Nombre único para el nuevo ingrediente")
-        for col in ingredientes_base[0].keys():
+        for col in columnas:
             if col == "Ingrediente":
                 continue
             helptext = tooltips.get(col, "")
@@ -228,27 +229,27 @@ if menu == "Análisis de Dieta":
 
     st.markdown("---")
     buscar = st.text_input("🔎 Buscar ingrediente por nombre", "")
-    if buscar:
-        filtrados = [
-            i for i in st.session_state["ingredientes"]
-            if isinstance(i, dict) and ("Ingrediente" in i) and buscar.lower() in i["Ingrediente"].lower()
-        ]
-        st.dataframe(pd.DataFrame(filtrados))
-    else:
-        st.dataframe(pd.DataFrame([
-            i for i in st.session_state["ingredientes"]
-            if isinstance(i, dict) and ("Ingrediente" in i)
-        ]))
+    filas_validas = []
+    for i in st.session_state["ingredientes"]:
+        if isinstance(i, dict) and all(k in i for k in columnas):
+            if buscar.lower() in i["Ingrediente"].lower() if buscar else True:
+                filas_validas.append([i[c] for c in columnas])
+    df_vista = pd.DataFrame(filas_validas, columns=columnas)
+    if df_vista.empty:
+        df_vista = pd.DataFrame(columns=columnas)
+    st.dataframe(df_vista)
 
     # Descarga robusta a Excel con BytesIO
-    df_export = pd.DataFrame([
-        i for i in st.session_state["ingredientes"]
-        if isinstance(i, dict) and ("Ingrediente" in i)
-    ])
+    filas_validas_export = []
+    for i in st.session_state["ingredientes"]:
+        if isinstance(i, dict) and all(k in i for k in columnas):
+            filas_validas_export.append([i[c] for c in columnas])
+    df_export = pd.DataFrame(filas_validas_export, columns=columnas)
+    if df_export.empty:
+        df_export = pd.DataFrame(columns=columnas)
     excel_buffer = io.BytesIO()
     df_export.to_excel(excel_buffer, index=False, engine='openpyxl')
     excel_buffer.seek(0)
-
     st.download_button(
         "Descargar matriz en Excel",
         data=excel_buffer,
