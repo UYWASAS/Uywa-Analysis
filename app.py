@@ -114,16 +114,13 @@ if menu == "Análisis de Dieta":
         )
 
         # ------------------- SELECCIÓN DE NUTRIENTES DINÁMICA -----------------
-        posibles_cols = df_ing.columns.tolist()
         columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
-       # Selección robusta de nutrientes (todas menos las fijas)
-columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
-columnas_nut = [col for col in df_ing.columns if col not in columnas_fijas]
-nutrientes_seleccionados = st.multiselect(
-    "Selecciona nutrientes a analizar",
-    columnas_nut,
-    default=columnas_nut[:4] if len(columnas_nut) >= 4 else columnas_nut
-)
+        columnas_nut = [col for col in df_ing.columns if col not in columnas_fijas]
+        nutrientes_seleccionados = st.multiselect(
+            "Selecciona nutrientes a analizar",
+            columnas_nut,
+            default=columnas_nut[:4] if len(columnas_nut) >= 4 else columnas_nut
+        )
 
         # ------------------- EDICIÓN DE INCLUSIÓN Y PRECIO --------------------
         data_formula = []
@@ -163,7 +160,6 @@ nutrientes_seleccionados = st.multiselect(
 
         if ingredientes_seleccionados and nutrientes_seleccionados:
             df_formula = pd.DataFrame(data_formula)
-
             st.subheader("Ingredientes y proporciones de tu dieta")
             st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"] + nutrientes_seleccionados])
 
@@ -173,7 +169,7 @@ nutrientes_seleccionados = st.multiselect(
             for ing in ingredientes_seleccionados:
                 valores = []
                 for nut in nutrientes_seleccionados:
-                    valor = df_formula[df_formula["Ingrediente"] == ing][nut].values[0]
+                    valor = pd.to_numeric(df_formula.loc[df_formula["Ingrediente"] == ing, nut], errors="coerce").values[0]
                     porc = df_formula[df_formula["Ingrediente"] == ing]["% Inclusión"].values[0]
                     aporte = (valor * porc) / 100 if pd.notnull(valor) else 0
                     valores.append(aporte)
@@ -196,7 +192,8 @@ nutrientes_seleccionados = st.multiselect(
             for nut in nutrientes_seleccionados:
                 costos_unit = []
                 for idx, row in df_formula.iterrows():
-                    aporte = (row[nut] * row["% Inclusión"]) / 100 if pd.notnull(row[nut]) else 0
+                    aporte = pd.to_numeric(row[nut], errors="coerce")
+                    aporte = (aporte * row["% Inclusión"]) / 100 if pd.notnull(aporte) else 0
                     costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
                     costo_unitario = (costo / aporte) if aporte > 0 else np.nan
                     costos_unit.append(costo_unitario)
