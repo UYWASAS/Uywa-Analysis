@@ -7,80 +7,6 @@ import plotly.graph_objs as go
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
-# ----------- ESTILO CORPORATIVO -----------
-st.markdown(
-    """
-    <style>
-    body, .stApp {
-        background: linear-gradient(120deg, #f3f6fa 0%, #e3ecf7 100%) !important;
-    }
-    .stSidebar, .stSidebarContent, .stSidebar * {
-        background: #19345c !important;
-        color: #fff !important;
-    }
-    section.main, section.main * {
-        font-family: 'Montserrat', 'Arial', sans-serif !important;
-    }
-    h1, h2, h3, h4, h5, h6, .stTitle, .stHeader, .stSubheader {
-        color: #19345c !important;
-    }
-    .stMarkdown, .stText, .stCaption, .stDataFrame, .stTabs, .stTab, .stMetric, .stAlert, .stExpander, .stNumberInput, .stSlider, .stSelectbox {
-        color: #222 !important;
-    }
-    label, .stNumberInput label, .stTextInput label, .stSelectbox label, .stMultiSelect label, .stCheckbox label, .stRadio label {
-        color: #19345c !important;
-        font-weight: 600 !important;
-    }
-    .stNumberInput input, .stTextInput input, .stSelectbox, .stMultiSelect {
-        background: #f4f8fa !important;
-        border-radius: 6px !important;
-        color: #19345c !important;
-    }
-    .stButton>button {
-        background-color: #204080 !important;
-        color: #fff !important;
-        border-radius: 6px !important;
-        border: none !important;
-        font-weight: 600 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-with st.sidebar:
-    st.image("nombre_archivo_logo.png", width=90)
-    st.markdown(
-        """
-        <div style='text-align: center;'>
-            <div style='font-size:24px;font-family:Montserrat,Arial;color:#fff; margin-top: 10px;letter-spacing:1px;'>
-                <b>UYWA-NUTRITION<sup>®</sup></b>
-            </div>
-            <div style='font-size:13px;color:#fff; margin-top: 5px; font-family:Montserrat,Arial;'>
-                Nutrición de Precisión Basada en Evidencia
-            </div>
-            <hr style='border-top:1px solid #2e4771; margin: 10px 0;'>
-            <div style='font-size:12px;color:#fff; margin-top: 8px;'>
-                <b>Contacto:</b> uywasas@gmail.com<br>
-                Derechos reservados © 2025
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-st.title("Gestión y Análisis de Dietas")
-
-menu = st.sidebar.radio(
-    "Selecciona una sección",
-    [
-        "Análisis de Dieta",
-        "Simulador Productivo",
-        "Simulador Económico",
-        "Comparador de Escenarios"
-    ]
-)
-
 @st.cache_data
 def cargar_ingredientes_excel(archivo):
     df = pd.read_excel(archivo)
@@ -88,33 +14,8 @@ def cargar_ingredientes_excel(archivo):
     df.columns = [c.strip() for c in df.columns]
     return df
 
-if 'ingredientes' not in st.session_state:
-    st.session_state['ingredientes'] = None
-
-datos_geneticos_base = pd.DataFrame({
-    "linea": ["Cobb", "Cobb", "Cobb", "Cobb", "Ross", "Ross", "Ross", "Ross"],
-    "edad": [28, 35, 42, 49, 28, 35, 42, 49],
-    "peso": [1.35, 1.95, 2.5, 3.05, 1.35, 1.95, 2.5, 3.05],
-    "consumo": [2.2, 3.1, 4.3, 5.6, 2.2, 3.1, 4.3, 5.6],
-    "fcr": [1.63, 1.59, 1.72, 1.84, 1.63, 1.59, 1.72, 1.84]
-})
-
-if "genetica_edit" not in st.session_state:
-    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
-elif not isinstance(st.session_state["genetica_edit"], pd.DataFrame):
-    st.session_state["genetica_edit"] = datos_geneticos_base.copy()
-
-if 'escenarios_guardados' not in st.session_state:
-    st.session_state['escenarios_guardados'] = []
-
-if 'escenarios_eco' not in st.session_state:
-    st.session_state['escenarios_eco'] = []
-
 # ------------- BLOQUE DE NAVEGACIÓN PRINCIPAL ----------------
-if menu == "Análisis de Dieta":
-    # -------------- ANÁLISIS DE DIETA --------------
-
-    # ----- Soporte para archivo local o subida -----
+if "Análisis de Dieta" in st.session_state.get("menu", "Análisis de Dieta"):
     archivo_excel = "Ingredientes1.xlsx"
     df_ing = None
     if os.path.exists(archivo_excel):
@@ -127,18 +28,33 @@ if menu == "Análisis de Dieta":
             st.warning("No se encontró el archivo Ingredientes1.xlsx. Sube uno para continuar.")
 
     if df_ing is not None:
+        # ------------------- SELECCIÓN DE INGREDIENTES -------------------------
         ingredientes_lista = df_ing["Ingrediente"].dropna().unique().tolist()
         ingredientes_seleccionados = st.multiselect(
             "Selecciona tus ingredientes", ingredientes_lista, default=[]
         )
 
+        # ------------------- SELECCIÓN DE NUTRIENTES DINÁMICA -----------------
+        posibles_cols = df_ing.columns.tolist()
+        columnas_fijas = ["Ingrediente", "% Inclusión", "precio"]
+        # Detecta columnas numéricas (nutrientes) excluyendo las fijas
+        columnas_nut = [col for col in posibles_cols if col not in columnas_fijas and df_ing[col].dtype in [np.float64, np.int64, float, int]]
+        nutrientes_seleccionados = st.multiselect(
+            "Selecciona nutrientes a analizar",
+            columnas_nut,
+            default=columnas_nut[:4]  # selecciona los primeros 4 por defecto
+        )
+
+        # ------------------- EDICIÓN DE INCLUSIÓN Y PRECIO --------------------
         data_formula = []
         total_inclusion = 0
+        st.markdown("### Ajusta % inclusión y precio (USD/kg) de cada ingrediente")
         for ing in ingredientes_seleccionados:
-            col1, col2 = st.columns([2, 1])
-            with col1:
+            fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
+            cols = st.columns([2, 1, 1])
+            with cols[0]:
                 st.write(f"**{ing}**")
-            with col2:
+            with cols[1]:
                 porcentaje = st.number_input(
                     f"% inclusión para {ing}",
                     min_value=0.0,
@@ -147,48 +63,78 @@ if menu == "Análisis de Dieta":
                     step=0.1,
                     key=f"porc_{ing}"
                 )
+            with cols[2]:
+                precio_mod = st.number_input(
+                    f"Precio {ing}",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=float(fila["precio"]) if "precio" in fila and pd.notnull(fila["precio"]) else 0.0,
+                    step=0.01,
+                    key=f"precio_{ing}"
+                )
             total_inclusion += porcentaje
-            fila = df_ing[df_ing["Ingrediente"] == ing].iloc[0].to_dict()
             fila["% Inclusión"] = porcentaje
+            fila["precio"] = precio_mod
             data_formula.append(fila)
 
-        if ingredientes_seleccionados:
-            st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
-            if abs(total_inclusion - 100) > 0.01:
-                st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
+        st.markdown(f"#### Suma total de inclusión: **{total_inclusion:.2f}%**")
+        if abs(total_inclusion - 100) > 0.01:
+            st.warning("La suma de los ingredientes no es 100%. Puede afectar el análisis final.")
 
-        if ingredientes_seleccionados:
+        if ingredientes_seleccionados and nutrientes_seleccionados:
             df_formula = pd.DataFrame(data_formula)
+
             st.subheader("Ingredientes y proporciones de tu dieta")
-            st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"]])
+            st.dataframe(df_formula[["Ingrediente", "% Inclusión", "precio"] + nutrientes_seleccionados])
 
-            st.subheader("Visualización de proporciones")
-            st.plotly_chart({
-                "data": [
-                    {
-                        "labels": df_formula["Ingrediente"],
-                        "values": df_formula["% Inclusión"],
-                        "type": "pie"
-                    }
-                ],
-                "layout": {"title": "Proporción de cada ingrediente"}
-            })
+            # ----------- GRAFICO: BARRAS APILADAS POR NUTRIENTE -------------
+            st.subheader("Aporte de cada ingrediente a los nutrientes (barras apiladas)")
+            fig = go.Figure()
+            for ing in ingredientes_seleccionados:
+                valores = []
+                for nut in nutrientes_seleccionados:
+                    valor = df_formula[df_formula["Ingrediente"] == ing][nut].values[0]
+                    porc = df_formula[df_formula["Ingrediente"] == ing]["% Inclusión"].values[0]
+                    aporte = (valor * porc) / 100 if pd.notnull(valor) else 0
+                    valores.append(aporte)
+                fig.add_trace(go.Bar(name=ing, x=nutrientes_seleccionados, y=valores))
+            fig.update_layout(barmode='stack', xaxis_title="Nutriente", yaxis_title="Aporte total (según % inclusión)")
+            st.plotly_chart(fig, use_container_width=True)
 
-            st.subheader("Resumen nutricional y económico de la dieta")
-            columnas_nut = ["PB", "EE", "FB", "Materia seca (%)", "precio"]
-            resumen = {}
-            for col in columnas_nut:
-                resumen[col] = np.sum(df_formula[col].astype(float) * df_formula["% Inclusión"]) / max(total_inclusion, 1)
-            st.write(pd.DataFrame(resumen, index=["Dieta final"]))
+            # ----------- GRAFICO: COSTO POR INGREDIENTE -------------
+            st.subheader("Costo total aportado por cada ingrediente (USD/kg de dieta)")
+            costos = [
+                (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                for idx, row in df_formula.iterrows()
+            ]
+            fig2 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos, text=[f"{c:.2f}" for c in costos], textposition='auto')])
+            fig2.update_layout(xaxis_title="Ingrediente", yaxis_title="Costo aportado (USD/kg de dieta)")
+            st.plotly_chart(fig2, use_container_width=True)
+
+            # ----------- GRAFICO: COSTO POR UNIDAD DE NUTRIENTE -------------
+            st.subheader("Costo por unidad de nutriente aportada (USD por unidad de nutriente)")
+            for nut in nutrientes_seleccionados:
+                costos_unit = []
+                for idx, row in df_formula.iterrows():
+                    aporte = (row[nut] * row["% Inclusión"]) / 100 if pd.notnull(row[nut]) else 0
+                    costo = (row["precio"] * row["% Inclusión"] / 100) if pd.notnull(row["precio"]) else 0
+                    costo_unitario = (costo / aporte) if aporte > 0 else np.nan
+                    costos_unit.append(costo_unitario)
+                fig3 = go.Figure([go.Bar(x=ingredientes_seleccionados, y=costos_unit, text=[f"{c:.2f}" if not np.isnan(c) else "-" for c in costos_unit], textposition='auto')])
+                fig3.update_layout(xaxis_title="Ingrediente", yaxis_title=f"Costo por unidad de {nut}", title=f"Costo por unidad de {nut}")
+                st.plotly_chart(fig3, use_container_width=True)
+
+            st.markdown("""
+            - Puedes modificar los precios de los ingredientes y ver el impacto instantáneamente.
+            - Selecciona los nutrientes que más te interesan para un análisis enfocado.
+            - Las barras apiladas muestran el aporte nutricional total por ingrediente.
+            - El gráfico de costo por ingrediente te ayuda a identificar los ingredientes más caros.
+            - El gráfico de costo por unidad de nutriente te permite optimizar la eficiencia de tu fórmula.
+            """)
+
         else:
-            st.info("Selecciona ingredientes y asigna proporciones para comenzar.")
+            st.info("Selecciona ingredientes y nutrientes para comenzar el análisis y visualización.")
 
-        st.markdown("""
-        - Puedes buscar y seleccionar ingredientes de forma rápida.
-        - Ajusta el % de inclusión de cada uno.
-        - Visualiza la composición y el costo de tu dieta al instante.
-        """)
-    
 # ---------------------- SIMULADOR PRODUCTIVO ----------------------
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo Mejorado")
