@@ -310,42 +310,6 @@ elif menu == "Comparador de Escenarios":
     df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
     st.subheader("Comparativa de genética/productividad")
     st.dataframe(df_gen)
-    st.info("Aquí podrás comparar escenarios productivos y económicos entre distintas genéticas y configuraciones. (En desarrollo)")
-# ============= SIMULADOR PRODUCTIVO =============
-elif menu == "Simulador Productivo":
-    st.header("Simulador Productivo")
-    st.subheader("Configuración genética y parámetros productivos")
-    df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
-    edit_df = st.data_editor(
-        df_gen,
-        num_rows="dynamic",
-        use_container_width=True,
-        key="df_genetica_editor"
-    )
-    if st.button("Guardar cambios de genética"):
-        st.session_state["genetica_edit"] = edit_df.copy()
-        st.success("¡Datos de genética actualizados!")
-
-    st.markdown("""
-    <ul>
-    <li>Modifica los parámetros de línea, edad, peso, consumo y FCR según tus necesidades productivas.</li>
-    <li>Haz clic en <b>Guardar cambios de genética</b> para actualizar la configuración que se utilizará en los demás cálculos y simulaciones.</li>
-    </ul>
-    """, unsafe_allow_html=True)
-
-    st.write("Vista previa de la configuración genética actual:")
-    st.dataframe(st.session_state["genetica_edit"])
-
-# ============= SIMULADOR ECONÓMICO =============
-elif menu == "Simulador Económico":
-    st.info("Aquí irá el Simulador Económico... (sección en desarrollo)")
-
-# ============= COMPARADOR DE ESCENARIOS =============
-elif menu == "Comparador de Escenarios":
-    st.header("Comparador de Escenarios")
-    df_gen = st.session_state.get("genetica_edit", datos_geneticos_base.copy())
-    st.subheader("Comparativa de genética/productividad")
-    st.dataframe(df_gen)
     st.info("Aquí podrás comparar escenarios productivos y económicos entre distintas genéticas y configuraciones. (En desarrollo)")# ============= SIMULADOR PRODUCTIVO =============
 elif menu == "Simulador Productivo":
     st.header("Simulador Productivo")
