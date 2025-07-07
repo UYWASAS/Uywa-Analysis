@@ -7,7 +7,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="Gestión y Análisis de Dietas", layout="wide")
 
-# --- FONDO CORPORATIVO ---
+# --- FONDO CORPORATIVO Y SIDEBAR LEGIBLE ---
 st.markdown("""
     <style>
     html, body, .stApp, .main, .block-container {
@@ -16,6 +16,10 @@ st.markdown("""
     }
     section[data-testid="stSidebar"] {
         background: #19345c !important;
+        color: #fff !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #fff !important;
     }
     .block-container {
         background: transparent !important;
@@ -28,6 +32,15 @@ st.markdown("""
         border-radius: 6px !important;
         border: none !important;
         box-shadow: none !important;
+    }
+    /* Sidebar radio buttons y labels */
+    .stRadio label, .stRadio div[role="radiogroup"] label, .stRadio div[role="radiogroup"] span {
+        color: #fff !important;
+        font-size: 18px !important;
+        font-weight: 500 !important;
+    }
+    .stRadio div[role="radiogroup"] > div {
+        color: #fff !important;
     }
     </style>
 """, unsafe_allow_html=True)
